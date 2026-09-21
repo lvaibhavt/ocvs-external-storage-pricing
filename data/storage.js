@@ -4,69 +4,74 @@
 //   OCVS  Germany Central (eu-frankfurt-1)      AVS   Germany West Central
 //   GCVE  Frankfurt (europe-west3)              EVS   EU Frankfurt (eu-central-1)
 //
-// Capacity convention: 1 TiB = 1,024 capacity units, matching every provider's
-// own calculator (e.g. a 1,024 GB OCI Block Volume at Balanced = 1,024 x $0.0425
-// = $43.52/month). OCI and AWS label the unit "GB", Azure and Google "GiB".
+// Capacity convention: 1 TiB = 1,024 billed units, matching every provider's own
+// calculator (1,024 GB OCI Block Volume at Balanced = 1,024 x $0.0425 = $43.52).
+// OCI and AWS label the unit "GB", Azure and Google "GiB".
 //
-// priceHr = billed per unit-hour (monthly = rate x hours/month, default 730).
-// price   = billed per unit-month (a flat monthly rate; hours do not apply).
+// priceHr = per unit-hour (monthly = rate x hours, default 730 h)
+// price   = flat per unit-month
 //
-// perf(tib) returns the headline performance for that capacity, so shapes that
-// scale with size (almost all of them) stay honest.
+// Performance per tier, all documented by the provider:
+//   iopsPerTiB / mbpsPerTiB      scale linearly with provisioned capacity
+//   writeIopsPerTiB / writeMbps  where read and write are quoted separately
+//   capIops / capMbps            ceiling; capScope says what the ceiling applies to
+//   fixedMbps                    performance that does NOT scale with capacity
 
 window.STORAGE = {
   asOf: "21 Sep 2026",
-  defaultHours: 730,   // Azure and Google quote per GiB-hour and convert at 730 h/month
+  defaultHours: 730,
   unitsPerTiB: 1024,
+  sliceGiB: 100,          // the "what does a 100 GiB volume get?" row
   region: "Frankfurt",
+
   platforms: {
-    ocvs: { name: "OCVS", longName: "Oracle Cloud VMware Solution", regionName: "Germany Central (Frankfurt)", accent: "#c74634" },
-    avs: { name: "AVS", longName: "Azure VMware Solution", regionName: "Germany West Central", accent: "#0078d4" },
+    ocvs: { name: "OCVS", longName: "Oracle Cloud VMware Solution", regionName: "Germany Central (Frankfurt)", accent: "#c74634", baseline: true },
     gcve: { name: "GCVE", longName: "Google Cloud VMware Engine", regionName: "Frankfurt (europe-west3)", accent: "#1a73e8" },
+    avs: { name: "AVS", longName: "Azure VMware Solution", regionName: "Germany West Central", accent: "#0078d4" },
     evs: { name: "Amazon EVS", longName: "Amazon Elastic VMware Service", regionName: "EU (Frankfurt) eu-central-1", accent: "#ff9900" }
   },
+  order: ["ocvs", "gcve", "avs", "evs"],
 
-  // No block datastore exists on GCVE; say so rather than showing an empty column.
   gaps: {
-    block: { gcve: "Google does not support any block (iSCSI/VMFS) datastore for VMware Engine. Only NFSv3 datastores from Filestore and Google Cloud NetApp Volumes are supported." }
+    block: { gcve: "Google supports no block (iSCSI/VMFS) datastore for VMware Engine — NFSv3 only, from Filestore or Google Cloud NetApp Volumes." }
   },
 
   options: [
     // ---------------- BLOCK ----------------
     {
       id: "oci-block", platform: "ocvs", kind: "block", name: "OCI Block Volume",
-      protocol: "iSCSI (VMFS)", media: "NVMe SSD", firstParty: true, unit: "GB",
-      // Storage $0.0255/GB-mo + $0.0017 per VPU per GB-mo.
+      protocol: "iSCSI", datastore: "VMFS", media: "NVMe SSD", ownership: "Oracle first-party", unit: "GB",
+      scaling: "Scales per volume", capScope: "per volume",
+      minSize: "50 GB", maxSize: "32 TB per volume · 32 volumes per SDDC",
       tiers: [
-        { id: "0", label: "Lower Cost (0 VPU)", price: 0.0255, iopsPerGB: 2, maxIops: 3000, kbpsPerGB: 240, maxMBps: 480 },
-        { id: "10", label: "Balanced (10 VPU)", price: 0.0425, iopsPerGB: 60, maxIops: 25000, kbpsPerGB: 480, maxMBps: 480, default: true },
-        { id: "20", label: "Higher Performance (20 VPU)", price: 0.0595, iopsPerGB: 75, maxIops: 50000, kbpsPerGB: 600, maxMBps: 680 },
-        { id: "30", label: "Ultra High (30 VPU)", price: 0.0765, iopsPerGB: 90, maxIops: 75000, kbpsPerGB: 720, maxMBps: 880 }
+        { id: "0", label: "Lower Cost (0 VPU)", price: 0.0255, iopsPerTiB: 2048, mbpsPerTiB: 245.76, capIops: 3000, capMbps: 480 },
+        { id: "10", label: "Balanced (10 VPU)", price: 0.0425, iopsPerTiB: 61440, mbpsPerTiB: 491.52, capIops: 25000, capMbps: 480, default: true },
+        { id: "20", label: "Higher Performance (20 VPU)", price: 0.0595, iopsPerTiB: 76800, mbpsPerTiB: 614.4, capIops: 50000, capMbps: 680 },
+        { id: "30", label: "Ultra High (30 VPU)", price: 0.0765, iopsPerTiB: 92160, mbpsPerTiB: 737.28, capIops: 75000, capMbps: 880 }
       ],
-      perf: (tib, t) => `${fmt(Math.min(t.iopsPerGB * tib * 1024, t.maxIops))} IOPS per volume · up to ${t.maxMBps} MB/s`,
       notes: [
-        "Per-volume limits; a datastore can use several volumes (SDDC pool max 32 volumes, 32 TB each).",
-        "Performance level is set per volume and can be changed online."
+        "Balanced gives 60 IOPS and 480 KB/s per GB, so a 100 GB volume gets 6,000 IOPS — performance follows each volume, not the datastore.",
+        "Per-volume ceilings apply; a datastore spanning several volumes adds their performance together.",
+        "The performance level can be changed online, with no downtime."
       ],
-      links: [["OCI Block Volume pricing", "https://www.oracle.com/cloud/price-list/#block-volume"],
+      links: [["OCI price list", "https://www.oracle.com/cloud/price-list/#block-volume"],
               ["Performance levels", "https://docs.oracle.com/en-us/iaas/Content/Block/Concepts/blockvolumeperformance.htm"],
               ["OCVS datastore management", "https://docs.oracle.com/en-us/iaas/Content/VMware/Tasks/datastores.htm"]]
     },
     {
       id: "elastic-san", platform: "avs", kind: "block", name: "Azure Elastic SAN",
-      protocol: "iSCSI (VMFS)", media: "SSD", firstParty: true, unit: "GiB",
+      protocol: "iSCSI", datastore: "VMFS", media: "SSD", ownership: "Azure first-party", unit: "GiB",
+      scaling: "Scales per SAN, from base capacity only", capScope: "per volume",
+      minSize: "1 TiB SAN", maxSize: "64 TiB per volume",
       tiers: [
-        { id: "lrs", label: "Premium LRS (base capacity)", price: 0.095, iopsPerTiB: 5000, mbpsPerTiB: 200, default: true },
-        { id: "lrs-add", label: "Premium LRS (additional capacity)", price: 0.07125, iopsPerTiB: 0, mbpsPerTiB: 0 },
-        { id: "zrs", label: "Premium ZRS (base capacity)", price: 0.156, iopsPerTiB: 5000, mbpsPerTiB: 200 }
+        { id: "lrs", label: "Premium LRS — base capacity", price: 0.095, iopsPerTiB: 5000, mbpsPerTiB: 200, capIops: 80000, capMbps: 1280, default: true },
+        { id: "lrs-add", label: "Premium LRS — additional capacity", price: 0.07125, iopsPerTiB: 0, mbpsPerTiB: 0, capIops: 0, capMbps: 0 },
+        { id: "zrs", label: "Premium ZRS — base capacity", price: 0.156, iopsPerTiB: 5000, mbpsPerTiB: 200, capIops: 80000, capMbps: 1280 }
       ],
-      perf: (tib, t) => t.iopsPerTiB
-        ? `${fmt(t.iopsPerTiB * tib)} IOPS · ${fmt(t.mbpsPerTiB * tib)} MB/s (SAN-wide)`
-        : "No added IOPS or throughput (capacity only)",
       notes: [
-        "Base capacity adds 5,000 IOPS and 200 MB/s per TiB; additional capacity adds none, so most designs mix the two.",
-        "Per volume: up to 80,000 IOPS and 1,280 MB/s, drawn from the SAN totals.",
-        "Minimum SAN size 1 TiB."
+        "Only base capacity adds performance: 5,000 IOPS and 200 MB/s per TiB. Additional capacity adds none and costs 25% less.",
+        "SAN performance is shared across all volumes; one volume tops out at 80,000 IOPS / 1,280 MB/s.",
+        "A volume needs 106 GiB for maximum IOPS and 21 GiB for maximum throughput."
       ],
       links: [["AVS + Elastic SAN", "https://learn.microsoft.com/en-us/azure/azure-vmware/configure-azure-elastic-san"],
               ["Scale targets", "https://learn.microsoft.com/en-us/azure/storage/elastic-san/elastic-san-scale-targets"],
@@ -74,25 +79,27 @@ window.STORAGE = {
     },
     {
       id: "pure-dedicated", platform: "avs", kind: "block", name: "Pure Storage Cloud Dedicated",
-      alias: "formerly Pure Cloud Block Store", protocol: "iSCSI (VMFS / vVols)", media: "SSD (Purity on Azure VMs + managed disks)",
-      partner: true, unit: "GiB", priceOnRequest: true,
-      perf: () => "Depends on the deployed model (V10MUR1 / V20MUR1 / V20MP2R2)",
+      alias: "formerly Pure Cloud Block Store", protocol: "iSCSI", datastore: "VMFS / vVols",
+      media: "SSD (Purity on Azure VMs + disks)", ownership: "Partner — Pure Storage", unit: "GiB",
+      partner: true, priceOnRequest: true, scaling: "Depends on the deployed model", capScope: "per array",
+      minSize: "Per model", maxSize: "Up to 308 TiB per array",
       notes: [
-        "Partner product: Pure Storage handles onboarding and support; you deploy it into your own Azure subscription.",
-        "Cost = Pure licence (from Pure Storage or an Azure Marketplace private offer) + the Azure VMs and managed disks it runs on.",
-        "Pure usually quotes effective TiB after data reduction, while the first-party services bill provisioned capacity."
+        "Partner product: Pure handles onboarding and support, and it runs in your own Azure subscription.",
+        "Cost = Pure licence (direct or an Azure Marketplace private offer) + the Azure VMs and disks it runs on.",
+        "Pure normally quotes effective TiB after data reduction, unlike first-party services that bill provisioned capacity."
       ],
       links: [["Configure Pure Cloud Block Store (AVS)", "https://learn.microsoft.com/en-us/azure/azure-vmware/configure-pure-cloud-block-store"],
-              ["Contact Pure Storage for pricing", "https://www.purestorage.com/company/contact-us.html"]]
+              ["Get a quote from Pure Storage", "https://www.purestorage.com/company/contact-us.html"]]
     },
     {
       id: "everpure", platform: "avs", kind: "block", name: "Everpure Cloud Azure Native",
-      alias: "formerly Azure Native Pure Storage Cloud", protocol: "iSCSI (vVols)", media: "SSD (managed service)",
-      partner: true, unit: "GiB", priceOnRequest: true,
-      perf: () => "Configurable capacity and performance (managed service)",
+      alias: "formerly Azure Native Pure Storage Cloud", protocol: "iSCSI", datastore: "vVols",
+      media: "SSD (managed service)", ownership: "Partner — Pure Storage, Azure-native", unit: "GiB",
+      partner: true, priceOnRequest: true, scaling: "Configurable capacity and performance", capScope: "per storage pool",
+      minSize: "Per plan", maxSize: "Per plan",
       notes: [
-        "Azure-native experience, but sold through the Azure Marketplace, so it is not in the Azure pricing calculator.",
-        "Subscribe in the Azure portal: Marketplace → search \"Everpure Cloud\". Some plans show a price, others are private offers.",
+        "Sold through the Azure Marketplace, so it is not in the Azure pricing calculator.",
+        "Azure portal → Marketplace → search \"Everpure Cloud\". Some plans show a price, others are private offers.",
         "Uses VAAI offload with AVS."
       ],
       links: [["Azure Native Pure Storage Cloud (AVS)", "https://learn.microsoft.com/en-us/azure/azure-vmware/configure-azure-native-pure-storage-cloud"],
@@ -100,37 +107,45 @@ window.STORAGE = {
     },
     {
       id: "fsx-block", platform: "evs", kind: "block", name: "Amazon FSx for NetApp ONTAP",
-      protocol: "iSCSI (VMFS) / NVMe", media: "SSD (plus optional capacity-pool tier)", firstParty: true, unit: "GB",
+      protocol: "iSCSI / NVMe", datastore: "VMFS", media: "SSD (+ optional cold tier)",
+      ownership: "AWS first-party — NetApp ONTAP", unit: "GB",
+      scaling: "Scales per file system, capped by throughput capacity", capScope: "per file system",
+      minSize: "1,024 GiB SSD", maxSize: "192 TiB SSD per HA pair",
       tiers: [
-        { id: "single", label: "Single-AZ SSD", price: 0.149, mbpsPrice: 0.822, default: true },
-        { id: "multi", label: "Multi-AZ SSD", price: 0.298, mbpsPrice: 1.369 },
-        { id: "pool", label: "Capacity pool (Single-AZ, tiered)", price: 0.0233, mbpsPrice: 0.822, pool: true }
+        { id: "single", label: "Single-AZ SSD", price: 0.149, iopsPerTiB: 3072, mbpsPerTiB: 768, default: true },
+        { id: "multi", label: "Multi-AZ SSD", price: 0.298, iopsPerTiB: 3072, mbpsPerTiB: 768 },
+        { id: "pool", label: "Capacity pool (cold tier)", price: 0.0233, iopsPerTiB: 0, mbpsPerTiB: 0, pool: true }
       ],
-      perf: (tib, t) => t.pool
-        ? "Cold tier: throughput from the file system, higher latency"
-        : `${fmt(3 * tib * 1024)} IOPS included (3 IOPS/GB) · throughput as provisioned`,
       notes: [
-        "Throughput capacity is billed separately, per MB/s per month, and is set on the file system.",
-        "SSD IOPS above 3 per GB can be provisioned at $0.0408 per IOPS-month (Multi-AZ) / $0.0204 (Single-AZ).",
-        "The capacity pool tier is for cold data; ONTAP tiers it automatically."
+        "SSD defaults to 3,072 IOPS and 768 MB/s per TiB, both capped by the throughput capacity bought for the file system.",
+        "Throughput capacity is charged separately ($0.822 per MB/s per month Single-AZ, $1.369 Multi-AZ) and is NOT in the price shown.",
+        "Extra SSD IOPS cost $0.0204 (Single-AZ) or $0.0408 (Multi-AZ) per IOPS-month.",
+        "Capacity pool is cold, tiered storage: tens of milliseconds of latency instead of sub-millisecond."
       ],
       links: [["FSx for ONTAP with EVS", "https://docs.aws.amazon.com/evs/latest/userguide/fsx-ontap.html"],
               ["iSCSI datastore setup", "https://docs.aws.amazon.com/evs/latest/userguide/config-fsx-iscsi-datastore.html"],
-              ["FSx pricing", "https://aws.amazon.com/fsx/netapp-ontap/pricing/"],
+              ["Performance", "https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance.html"],
               ["AWS pricing calculator", "https://calculator.aws/#/createCalculator/FSxONTAP"]]
     },
 
     // ---------------- FILE ----------------
     {
       id: "oci-fss", platform: "ocvs", kind: "file", name: "OCI File Storage (FSS)",
-      protocol: "NFSv3", media: "SSD-backed, 5-way replicated", firstParty: true, unit: "GB",
-      tiers: [{ id: "std", label: "Standard mount target", price: 0.30, default: true }],
-      perf: tib => "Mount target throughput; HPMT options give 20 / 40 / 80 Gbps",
+      protocol: "NFSv3", datastore: "NFS", media: "SSD-backed, 5-way replicated", ownership: "Oracle first-party", unit: "GB",
+      scaling: "Fixed per mount target — does not scale with capacity", capScope: "per mount target",
+      minSize: "No minimum", maxSize: "8 EB per file system",
+      tiers: [
+        { id: "std", label: "Standard mount target", price: 0.30, fixedMbps: 1250, default: true },
+        { id: "hpmt20", label: "HPMT-20 (20 Gbps)", price: 0.30, fixedMbps: 2500, extra: true },
+        { id: "hpmt40", label: "HPMT-40 (40 Gbps)", price: 0.30, fixedMbps: 5000, extra: true },
+        { id: "hpmt80", label: "HPMT-80 (80 Gbps)", price: 0.30, fixedMbps: 10000, extra: true }
+      ],
       notes: [
-        "VMware-certified as secondary storage for OCVS clusters (March 2022).",
-        "High Performance Mount Targets (HPMT-20/40/80) are billed per performance unit and carry a 30-day commitment.",
-        "Scale out with more mount targets for higher aggregate throughput.",
-        "For bulk capacity on OCVS, OCI Block Volume datastores are far cheaper per TiB than FSS; FSS suits shared-file and lift-and-shift cases."
+        "Performance comes from the mount target, not from provisioned capacity: a 100 GiB share and a 100 TiB share get the same throughput.",
+        "High Performance Mount Targets (20/40/80 Gbps) are billed separately per performance unit with a 30-day commitment; that charge is NOT in the price shown.",
+        "Scale out with more mount targets — Oracle has demonstrated 1.6M IOPS across four.",
+        "VMware-certified as secondary storage for OCVS (March 2022).",
+        "For bulk capacity on OCVS, block volume datastores are far cheaper per TiB than FSS."
       ],
       links: [["OCI File Storage is VMware certified", "https://blogs.oracle.com/cloud-infrastructure/post/oci-fss-service-is-now-vmware-certified"],
               ["OCI price list", "https://www.oracle.com/cloud/price-list/#file-storage"],
@@ -138,20 +153,20 @@ window.STORAGE = {
     },
     {
       id: "anf", platform: "avs", kind: "file", name: "Azure NetApp Files",
-      protocol: "NFS", media: "Bare-metal flash (NetApp)", firstParty: true, unit: "GiB",
+      protocol: "NFS", datastore: "NFS", media: "Bare-metal flash (NetApp)", ownership: "Azure first-party", unit: "GiB",
+      scaling: "Scales per volume, with the assigned quota", capScope: "per volume",
+      minSize: "1 TiB capacity pool", maxSize: "1 PiB pool · 100 TiB large volume",
       tiers: [
-        { id: "standard", label: "Standard", priceHr: 0.000202, mibpsPerTiB: 16 },
-        { id: "premium", label: "Premium", priceHr: 0.000403, mibpsPerTiB: 64, default: true },
-        { id: "ultra", label: "Ultra", priceHr: 0.000538, mibpsPerTiB: 128 },
-        { id: "flexible", label: "Flexible (capacity)", priceHr: 0.000196, mibpsPerTiB: 0, flex: true }
+        { id: "standard", label: "Standard", priceHr: 0.000202, mbpsPerTiB: 16, mib: true },
+        { id: "premium", label: "Premium", priceHr: 0.000403, mbpsPerTiB: 64, mib: true, default: true },
+        { id: "ultra", label: "Ultra", priceHr: 0.000538, mbpsPerTiB: 128, mib: true },
+        { id: "flexible", label: "Flexible (capacity only)", priceHr: 0.000196, mbpsPerTiB: 0, mib: true, extra: true }
       ],
-      perf: (tib, t) => t.flex
-        ? "Throughput bought separately: min 128 MiB/s, $2.93 per MiB/s per month"
-        : `${fmt(t.mibpsPerTiB * tib)} MiB/s (${t.mibpsPerTiB} MiB/s per TiB)`,
       notes: [
-        "Throughput is tied to the service level and provisioned capacity, not to IOPS.",
-        "Attached to AVS clusters as NFS datastores.",
-        "Flexible service level decouples capacity from throughput."
+        "Throughput follows the service level and the volume quota: 16 / 64 / 128 MiB/s per TiB for Standard / Premium / Ultra.",
+        "A 100 GiB Premium volume gets 6.25 MiB/s — performance follows the volume, not the pool.",
+        "Microsoft publishes throughput, not IOPS, for the service levels.",
+        "Flexible decouples capacity from throughput: minimum 128 MiB/s, then $2.93 per MiB/s per month, not in the price shown."
       ],
       links: [["Attach ANF datastores to AVS", "https://learn.microsoft.com/en-us/azure/azure-vmware/attach-azure-netapp-files-to-azure-vmware-solution-hosts"],
               ["Service levels", "https://learn.microsoft.com/en-us/azure/azure-netapp-files/azure-netapp-files-service-levels"],
@@ -159,17 +174,19 @@ window.STORAGE = {
     },
     {
       id: "gcnv", platform: "gcve", kind: "file", name: "Google Cloud NetApp Volumes",
-      protocol: "NFSv3", media: "Not published by Google", firstParty: true, unit: "GiB",
+      protocol: "NFSv3", datastore: "NFS", media: "Not published by Google", ownership: "Google first-party — NetApp", unit: "GiB",
+      scaling: "Scales per volume, with provisioned capacity", capScope: "per storage pool",
+      minSize: "1 TiB storage pool", maxSize: "Varies by service level",
       tiers: [
-        { id: "standard", label: "Standard", priceHr: 0.000315068, mibpsPerTiB: 16 },
-        { id: "premium", label: "Premium", priceHr: 0.000463425, mibpsPerTiB: 64, default: true },
-        { id: "extreme", label: "Extreme", priceHr: 0.00061863, mibpsPerTiB: 128 }
+        { id: "standard", label: "Standard", priceHr: 0.000315068, mbpsPerTiB: 16, mib: true },
+        { id: "premium", label: "Premium", priceHr: 0.000463425, mbpsPerTiB: 64, mib: true, default: true },
+        { id: "extreme", label: "Extreme", priceHr: 0.00061863, mbpsPerTiB: 128, mib: true }
       ],
-      perf: (tib, t) => `${fmt(t.mibpsPerTiB * tib)} MiB/s (${t.mibpsPerTiB} KiB/s per GiB)`,
       notes: [
-        "Certified as an NFS datastore for VMware Engine; NFSv3 only (NFSv4.1 is not supported).",
-        "1-year and 3-year committed use discounts are available (not applied here).",
-        "Flex service levels allow custom capacity, throughput and IOPS."
+        "Throughput scales with capacity: 16 / 64 / 128 KiB/s per GiB for Standard / Premium / Extreme.",
+        "Google publishes throughput, not IOPS, and does not publish the underlying media.",
+        "NFSv3 only — NFSv4.1 is not supported as a VMware Engine datastore.",
+        "1-year and 3-year committed use discounts exist; the price shown is list."
       ],
       links: [["NetApp Volumes as a GCVE datastore", "https://docs.cloud.google.com/vmware-engine/docs/vmware-ecosystem/howto-cloud-volumes-datastores-vmware-engine"],
               ["NetApp Volumes pricing", "https://cloud.google.com/netapp/volumes/pricing"],
@@ -177,42 +194,44 @@ window.STORAGE = {
     },
     {
       id: "filestore", platform: "gcve", kind: "file", name: "Filestore",
-      protocol: "NFSv3", media: "SSD", firstParty: true, unit: "GiB",
+      protocol: "NFSv3", datastore: "NFS", media: "SSD", ownership: "Google first-party", unit: "GiB",
+      scaling: "Scales per instance, with capacity", capScope: "per instance",
+      minSize: "10 TiB to be VMware-certified", maxSize: "100 TiB per instance",
       tiers: [
-        { id: "zonal", label: "Zonal", priceHr: 0.000410959, default: true },
-        { id: "regional", label: "Regional", priceHr: 0.000739726 }
+        { id: "zonal", label: "Zonal", priceHr: 0.000410959, iopsPerTiB: 9200, mbpsPerTiB: 260, mib: true, writeIopsPerTiB: 2600, writeMbpsPerTiB: 88, default: true },
+        { id: "regional", label: "Regional", priceHr: 0.000739726, iopsPerTiB: 9200, mbpsPerTiB: 260, mib: true, writeIopsPerTiB: 2600, writeMbpsPerTiB: 88 }
       ],
-      perf: () => "Scales with capacity; VMware-certified from 10 TiB upwards",
       notes: [
-        "Only Zonal and Regional tiers of 10 TiB or more are VMware-certified. Basic SSD and Basic HDD are not supported.",
-        "Custom performance (provisioned IOPS) is billed separately.",
+        "Performance scales with capacity: at 10 TiB, 92,000 read IOPS / 26,000 write IOPS and 2,600 MiB/s read / 880 MiB/s write.",
+        "Only Zonal and Regional tiers of 10 TiB or more are VMware-certified; Basic SSD and Basic HDD are not supported.",
+        "Custom performance (provisioned IOPS) is billed separately and is not in the price shown.",
         "NFSv3 only."
       ],
       links: [["Filestore volumes as GCVE datastores", "https://docs.cloud.google.com/vmware-engine/docs/vmware-ecosystem/howto-filestore-storage-for-vmware-engine-datastores"],
-              ["Storage for GCVE datastores", "https://docs.cloud.google.com/filestore/docs/gcve-datastores"],
+              ["Performance", "https://docs.cloud.google.com/filestore/docs/performance"],
               ["Filestore pricing", "https://cloud.google.com/filestore/pricing"]]
     },
     {
       id: "fsx-file", platform: "evs", kind: "file", name: "Amazon FSx for NetApp ONTAP",
-      protocol: "NFSv3 / NFSv4.1", media: "SSD (plus optional capacity-pool tier)", firstParty: true, unit: "GB",
+      protocol: "NFSv3 / NFSv4.1", datastore: "NFS", media: "SSD (+ optional cold tier)",
+      ownership: "AWS first-party — NetApp ONTAP", unit: "GB",
+      scaling: "Scales per file system, capped by throughput capacity", capScope: "per file system",
+      minSize: "1,024 GiB SSD", maxSize: "192 TiB SSD per HA pair",
       tiers: [
-        { id: "single", label: "Single-AZ SSD", price: 0.149, mbpsPrice: 0.822, default: true },
-        { id: "multi", label: "Multi-AZ SSD", price: 0.298, mbpsPrice: 1.369 },
-        { id: "pool", label: "Capacity pool (Single-AZ, tiered)", price: 0.0233, mbpsPrice: 0.822, pool: true }
+        { id: "single", label: "Single-AZ SSD", price: 0.149, iopsPerTiB: 3072, mbpsPerTiB: 768, default: true },
+        { id: "multi", label: "Multi-AZ SSD", price: 0.298, iopsPerTiB: 3072, mbpsPerTiB: 768 },
+        { id: "pool", label: "Capacity pool (cold tier)", price: 0.0233, iopsPerTiB: 0, mbpsPerTiB: 0, pool: true }
       ],
-      perf: (tib, t) => t.pool
-        ? "Cold tier: throughput from the file system, higher latency"
-        : `${fmt(3 * tib * 1024)} IOPS included (3 IOPS/GB) · throughput as provisioned`,
       notes: [
-        "The only external datastore AWS documents as validated for EVS; covers both NFS and iSCSI.",
-        "Throughput capacity is billed separately per MB/s per month.",
-        "NFSv4.1 is supported, unlike GCVE."
+        "SSD defaults to 3,072 IOPS and 768 MB/s per TiB, both capped by the file system's throughput capacity.",
+        "Throughput capacity is charged separately ($0.822 per MB/s per month Single-AZ) and is NOT in the price shown.",
+        "The only external datastore AWS documents as validated for EVS, and the only option here supporting NFSv4.1.",
+        "Capacity pool is cold, tiered storage with tens of milliseconds of latency."
       ],
       links: [["FSx for ONTAP with EVS", "https://docs.aws.amazon.com/evs/latest/userguide/fsx-ontap.html"],
               ["NFS datastore setup", "https://docs.aws.amazon.com/evs/latest/userguide/config-fsx-nfs-datastore.html"],
+              ["Performance", "https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance.html"],
               ["FSx pricing", "https://aws.amazon.com/fsx/netapp-ontap/pricing/"]]
     }
   ]
 };
-
-function fmt(n) { return Math.round(n).toLocaleString("en-US"); }

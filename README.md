@@ -4,7 +4,12 @@ Which **external datastore** options exist for VMware on each hyperscaler, what 
 
 **Live tool:** https://lvaibhavt.github.io/ocvs-external-storage-pricing/
 
-Pick **Block (iSCSI/VMFS)** or **File (NFS)** and a capacity, and the tool shows each platform's supported options side by side, with protocol, media, performance at that capacity, monthly list cost and links to the provider's own pricing page.
+Pick **Block (iSCSI/VMFS)** or **File (NFS)** and a capacity, then choose a service and tier per platform. The comparison table lays them out side by side, in the same format as the [node pricing tool](https://github.com/lvaibhavt/vmware-cloud-pricing-compare):
+
+- **Configuration:** region, service, tier, first-party or partner
+- **Protocol & media:** protocol, datastore type, media (NVMe SSD, flash, SSD), minimum and maximum size
+- **Performance:** how it scales, IOPS and throughput per TiB, at the chosen capacity, the per-volume ceiling, and what a single 100 GiB volume gets
+- **Pricing:** rate per unit-month, per TiB, at the chosen capacity, and over 3 years, with savings against OCVS
 
 ## What's covered
 

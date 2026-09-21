@@ -4,47 +4,58 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OCVS External Storage Pricing</title>
-<meta name="description" content="Compare external datastore options (block and file) for OCVS, AVS, GCVE and Amazon EVS: what is supported, what it costs and what performance you get.">
+<meta name="description" content="Compare external datastore options (block and file) for OCVS, AVS, GCVE and Amazon EVS side by side: media, protocol, IOPS, throughput and list price.">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<main id="app" class="wrap">
-  <h1>External storage for VMware on the hyperscalers</h1>
-  <p class="lead">Pick the storage type you need. The tool shows which datastore options each platform supports,
-    what they cost at list price and what performance you get for that capacity.</p>
+<header class="top">
+  <div class="wrap">
+    <h1>OCVS External Storage Comparison</h1>
+    <p class="sub">Block and file datastore options for OCVS, GCVE, AVS and Amazon EVS · list prices · Frankfurt · pick a storage type, a capacity and an option per platform.</p>
+  </div>
+</header>
 
-  <div class="panel controls">
-    <div class="field">
-      <label>Storage type</label>
+<main class="wrap">
+  <section class="panel settings" aria-label="Assumptions">
+    <label>Storage type
       <div class="seg" data-g="kind">
-        <button data-v="block">Block · iSCSI / VMFS</button>
+        <button data-v="block">Block · iSCSI</button>
         <button data-v="file">File · NFS</button>
       </div>
-    </div>
-    <div class="field">
-      <label for="cap">Usable capacity needed</label>
-      <div class="cap"><input id="cap" type="number" min="1" max="1000" step="1" value="100"><span>TiB = <b id="units">102,400</b> GB/GiB</span></div>
-    </div>
-    <div class="field">
-      <label for="hours">Hours per month</label>
-      <div class="cap"><input id="hours" type="number" min="1" max="744" step="1" value="730"><span>h</span></div>
-    </div>
-    <p class="region">Region: <b>Frankfurt</b> for all four platforms · list prices as of <span id="asOf"></span></p>
-  </div>
+    </label>
+    <label>Capacity (TiB)
+      <input id="cap" type="number" min="1" max="1000" step="1" value="100">
+    </label>
+    <label>Hours per month
+      <input id="hours" type="number" min="1" max="744" step="1" value="730">
+    </label>
+    <p class="units">1 TiB = 1,024 units · you are pricing <b id="units">102,400</b> GB/GiB</p>
+    <button id="reset" class="ghost" type="button">Reset to defaults</button>
+  </section>
 
-  <div id="results"></div>
+  <section class="pickers" id="pickers" aria-label="Storage option per platform"></section>
 
-  <div class="panel disclaimer">
+  <section class="panel">
+    <div class="result-head">
+      <h2>Comparison</h2>
+      <span class="muted" id="head-sub"></span>
+    </div>
+    <div class="table-scroll"><table id="result"></table></div>
+    <div class="callouts" id="callouts"></div>
+    <ol class="notes" id="notes"></ol>
+  </section>
+
+  <section class="panel disclaimer">
     <h2>Read before quoting these figures</h2>
     <ul>
-      <li><b>Indicative only.</b> Public list prices, no discounts, no commitments. Always confirm on the provider's own calculator before sharing with a customer.</li>
-      <li><b>Capacity is what you provision</b>, not what you consume after dedupe or compression. Partner products are often quoted as effective capacity instead.</li>
-      <li><b>1 TiB = 1,024 capacity units</b>, matching every provider's own calculator. OCI and AWS call the unit "GB", Azure and Google call it "GiB". Example: a 1,024 GB OCI Block Volume at Balanced is 1,024 × $0.0425 = $43.52/month, exactly as the OCI calculator shows.</li>
-      <li><b>Hours per month:</b> Azure NetApp Files, Google Cloud NetApp Volumes and Filestore are billed per unit-hour, so their monthly figure is rate × hours (default <b>730</b>, the convention Azure and Google use). Use 744 for a 31-day month. OCI, Azure Elastic SAN and FSx for ONTAP quote a flat monthly rate, so hours don't change them.</li>
-      <li><b>Storage only.</b> Excludes VMware nodes, networking, egress, backup, support and taxes. For node pricing use the OCVS pricing comparison tool.</li>
-      <li><b>Not included in the monthly figure:</b> FSx throughput capacity and provisioned IOPS, ANF Flexible throughput, Filestore custom performance, and OCI HPMT performance units. Each is called out in the notes.</li>
+      <li><b>Indicative only.</b> Public list prices, no discounts or commitments. Confirm on the provider's own calculator before sharing with a customer.</li>
+      <li><b>1 TiB = 1,024 billed units</b>, as in each provider's calculator. OCI and AWS call the unit "GB", Azure and Google "GiB". Check: 1,024 GB OCI Block Volume at Balanced = 1,024 × $0.0425 = $43.52/month.</li>
+      <li><b>Hours per month</b> (default 730) applies to the per-hour services: Azure NetApp Files, Google Cloud NetApp Volumes and Filestore. OCI, Elastic SAN and FSx quote flat monthly rates.</li>
+      <li><b>Capacity is provisioned capacity</b>, not capacity after dedupe or compression. Partner products are usually quoted as effective capacity instead.</li>
+      <li><b>Not included in the price:</b> FSx throughput capacity and extra SSD IOPS, ANF Flexible throughput, Filestore custom performance, OCI HPMT performance units. Each is flagged in the notes.</li>
+      <li><b>Storage only:</b> no VMware nodes, networking, egress, backup, support or taxes.</li>
     </ul>
-  </div>
+  </section>
 </main>
 
 <script src="data/storage.js"></script>
