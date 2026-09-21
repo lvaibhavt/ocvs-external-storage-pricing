@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OCVS External Storage Pricing</title>
+<meta name="description" content="Compare external datastore options (block and file) for OCVS, AVS, GCVE and Amazon EVS: what is supported, what it costs and what performance you get.">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<main id="app" class="wrap">
+  <h1>External storage for VMware on the hyperscalers</h1>
+  <p class="lead">Pick the storage type you need. The tool shows which datastore options each platform supports,
+    what they cost at list price and what performance you get for that capacity.</p>
+
+  <div class="panel controls">
+    <div class="field">
+      <label>Storage type</label>
+      <div class="seg" data-g="kind">
+        <button data-v="block">Block · iSCSI / VMFS</button>
+        <button data-v="file">File · NFS</button>
+      </div>
+    </div>
+    <div class="field">
+      <label for="cap">Usable capacity needed</label>
+      <div class="cap"><input id="cap" type="number" min="1" max="1000" step="1" value="100"><span>TiB</span></div>
+    </div>
+    <p class="region">Region: <b>Frankfurt</b> for all four platforms · list prices as of <span id="asOf"></span></p>
+  </div>
+
+  <div id="results"></div>
+
+  <div class="panel disclaimer">
+    <h2>Read before quoting these figures</h2>
+    <ul>
+      <li><b>Indicative only.</b> Public list prices, no discounts, no commitments. Always confirm on the provider's own calculator before sharing with a customer.</li>
+      <li><b>Capacity is what you provision</b>, not what you consume after dedupe or compression. Partner products are often quoted as effective capacity instead.</li>
+      <li><b>Billing units differ.</b> OCI and AWS bill per decimal GB (1 TiB = 1,099.51 GB); Azure and Google bill per binary GiB (1 TiB = 1,024 GiB). The tool converts for you.</li>
+      <li><b>Storage only.</b> Excludes VMware nodes, networking, egress, backup, support and taxes. For node pricing use the OCVS pricing comparison tool.</li>
+      <li><b>Not included in the monthly figure:</b> FSx throughput capacity and provisioned IOPS, ANF Flexible throughput, Filestore custom performance, and OCI HPMT performance units. Each is called out in the notes.</li>
+    </ul>
+  </div>
+</main>
+
+<script src="data/storage.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
