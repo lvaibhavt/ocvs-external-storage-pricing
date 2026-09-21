@@ -4,14 +4,20 @@
 //   OCVS  Germany Central (eu-frankfurt-1)      AVS   Germany West Central
 //   GCVE  Frankfurt (europe-west3)              EVS   EU Frankfurt (eu-central-1)
 //
-// unit: "GB"  = billed per decimal GB-month  (1 TiB = 1099.51 GB)
-//       "GiB" = billed per binary GiB-month  (1 TiB = 1024 GiB)
+// Capacity convention: 1 TiB = 1,024 capacity units, matching every provider's
+// own calculator (e.g. a 1,024 GB OCI Block Volume at Balanced = 1,024 x $0.0425
+// = $43.52/month). OCI and AWS label the unit "GB", Azure and Google "GiB".
+//
+// priceHr = billed per unit-hour (monthly = rate x hours/month, default 730).
+// price   = billed per unit-month (a flat monthly rate; hours do not apply).
 //
 // perf(tib) returns the headline performance for that capacity, so shapes that
 // scale with size (almost all of them) stay honest.
 
 window.STORAGE = {
   asOf: "21 Sep 2026",
+  defaultHours: 730,   // Azure and Google quote per GiB-hour and convert at 730 h/month
+  unitsPerTiB: 1024,
   region: "Frankfurt",
   platforms: {
     ocvs: { name: "OCVS", longName: "Oracle Cloud VMware Solution", regionName: "Germany Central (Frankfurt)", accent: "#c74634" },
@@ -37,7 +43,7 @@ window.STORAGE = {
         { id: "20", label: "Higher Performance (20 VPU)", price: 0.0595, iopsPerGB: 75, maxIops: 50000, kbpsPerGB: 600, maxMBps: 680 },
         { id: "30", label: "Ultra High (30 VPU)", price: 0.0765, iopsPerGB: 90, maxIops: 75000, kbpsPerGB: 720, maxMBps: 880 }
       ],
-      perf: (tib, t) => `${fmt(Math.min(t.iopsPerGB * tib * 1099.51, t.maxIops))} IOPS per volume · up to ${t.maxMBps} MB/s`,
+      perf: (tib, t) => `${fmt(Math.min(t.iopsPerGB * tib * 1024, t.maxIops))} IOPS per volume · up to ${t.maxMBps} MB/s`,
       notes: [
         "Per-volume limits; a datastore can use several volumes (SDDC pool max 32 volumes, 32 TB each).",
         "Performance level is set per volume and can be changed online."
@@ -102,7 +108,7 @@ window.STORAGE = {
       ],
       perf: (tib, t) => t.pool
         ? "Cold tier: throughput from the file system, higher latency"
-        : `${fmt(3 * tib * 1099.51)} IOPS included (3 IOPS/GB) · throughput as provisioned`,
+        : `${fmt(3 * tib * 1024)} IOPS included (3 IOPS/GB) · throughput as provisioned`,
       notes: [
         "Throughput capacity is billed separately, per MB/s per month, and is set on the file system.",
         "SSD IOPS above 3 per GB can be provisioned at $0.0408 per IOPS-month (Multi-AZ) / $0.0204 (Single-AZ).",
@@ -134,10 +140,10 @@ window.STORAGE = {
       id: "anf", platform: "avs", kind: "file", name: "Azure NetApp Files",
       protocol: "NFS", media: "Bare-metal flash (NetApp)", firstParty: true, unit: "GiB",
       tiers: [
-        { id: "standard", label: "Standard", price: 0.1475, mibpsPerTiB: 16 },
-        { id: "premium", label: "Premium", price: 0.2942, mibpsPerTiB: 64, default: true },
-        { id: "ultra", label: "Ultra", price: 0.3927, mibpsPerTiB: 128 },
-        { id: "flexible", label: "Flexible (capacity)", price: 0.1431, mibpsPerTiB: 0, flex: true }
+        { id: "standard", label: "Standard", priceHr: 0.000202, mibpsPerTiB: 16 },
+        { id: "premium", label: "Premium", priceHr: 0.000403, mibpsPerTiB: 64, default: true },
+        { id: "ultra", label: "Ultra", priceHr: 0.000538, mibpsPerTiB: 128 },
+        { id: "flexible", label: "Flexible (capacity)", priceHr: 0.000196, mibpsPerTiB: 0, flex: true }
       ],
       perf: (tib, t) => t.flex
         ? "Throughput bought separately: min 128 MiB/s, $2.93 per MiB/s per month"
@@ -155,9 +161,9 @@ window.STORAGE = {
       id: "gcnv", platform: "gcve", kind: "file", name: "Google Cloud NetApp Volumes",
       protocol: "NFSv3", media: "Not published by Google", firstParty: true, unit: "GiB",
       tiers: [
-        { id: "standard", label: "Standard", price: 0.23, mibpsPerTiB: 16 },
-        { id: "premium", label: "Premium", price: 0.338, mibpsPerTiB: 64, default: true },
-        { id: "extreme", label: "Extreme", price: 0.452, mibpsPerTiB: 128 }
+        { id: "standard", label: "Standard", priceHr: 0.000315068, mibpsPerTiB: 16 },
+        { id: "premium", label: "Premium", priceHr: 0.000463425, mibpsPerTiB: 64, default: true },
+        { id: "extreme", label: "Extreme", priceHr: 0.00061863, mibpsPerTiB: 128 }
       ],
       perf: (tib, t) => `${fmt(t.mibpsPerTiB * tib)} MiB/s (${t.mibpsPerTiB} KiB/s per GiB)`,
       notes: [
@@ -173,8 +179,8 @@ window.STORAGE = {
       id: "filestore", platform: "gcve", kind: "file", name: "Filestore",
       protocol: "NFSv3", media: "SSD", firstParty: true, unit: "GiB",
       tiers: [
-        { id: "zonal", label: "Zonal", price: 0.30, default: true },
-        { id: "regional", label: "Regional", price: 0.54 }
+        { id: "zonal", label: "Zonal", priceHr: 0.000410959, default: true },
+        { id: "regional", label: "Regional", priceHr: 0.000739726 }
       ],
       perf: () => "Scales with capacity; VMware-certified from 10 TiB upwards",
       notes: [
@@ -196,7 +202,7 @@ window.STORAGE = {
       ],
       perf: (tib, t) => t.pool
         ? "Cold tier: throughput from the file system, higher latency"
-        : `${fmt(3 * tib * 1099.51)} IOPS included (3 IOPS/GB) · throughput as provisioned`,
+        : `${fmt(3 * tib * 1024)} IOPS included (3 IOPS/GB) · throughput as provisioned`,
       notes: [
         "The only external datastore AWS documents as validated for EVS; covers both NFS and iSCSI.",
         "Throughput capacity is billed separately per MB/s per month.",

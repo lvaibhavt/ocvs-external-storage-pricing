@@ -23,7 +23,11 @@
     </div>
     <div class="field">
       <label for="cap">Usable capacity needed</label>
-      <div class="cap"><input id="cap" type="number" min="1" max="1000" step="1" value="100"><span>TiB</span></div>
+      <div class="cap"><input id="cap" type="number" min="1" max="1000" step="1" value="100"><span>TiB = <b id="units">102,400</b> GB/GiB</span></div>
+    </div>
+    <div class="field">
+      <label for="hours">Hours per month</label>
+      <div class="cap"><input id="hours" type="number" min="1" max="744" step="1" value="730"><span>h</span></div>
     </div>
     <p class="region">Region: <b>Frankfurt</b> for all four platforms · list prices as of <span id="asOf"></span></p>
   </div>
@@ -35,7 +39,8 @@
     <ul>
       <li><b>Indicative only.</b> Public list prices, no discounts, no commitments. Always confirm on the provider's own calculator before sharing with a customer.</li>
       <li><b>Capacity is what you provision</b>, not what you consume after dedupe or compression. Partner products are often quoted as effective capacity instead.</li>
-      <li><b>Billing units differ.</b> OCI and AWS bill per decimal GB (1 TiB = 1,099.51 GB); Azure and Google bill per binary GiB (1 TiB = 1,024 GiB). The tool converts for you.</li>
+      <li><b>1 TiB = 1,024 capacity units</b>, matching every provider's own calculator. OCI and AWS call the unit "GB", Azure and Google call it "GiB". Example: a 1,024 GB OCI Block Volume at Balanced is 1,024 × $0.0425 = $43.52/month, exactly as the OCI calculator shows.</li>
+      <li><b>Hours per month:</b> Azure NetApp Files, Google Cloud NetApp Volumes and Filestore are billed per unit-hour, so their monthly figure is rate × hours (default <b>730</b>, the convention Azure and Google use). Use 744 for a 31-day month. OCI, Azure Elastic SAN and FSx for ONTAP quote a flat monthly rate, so hours don't change them.</li>
       <li><b>Storage only.</b> Excludes VMware nodes, networking, egress, backup, support and taxes. For node pricing use the OCVS pricing comparison tool.</li>
       <li><b>Not included in the monthly figure:</b> FSx throughput capacity and provisioned IOPS, ANF Flexible throughput, Filestore custom performance, and OCI HPMT performance units. Each is called out in the notes.</li>
     </ul>

@@ -20,8 +20,9 @@ Pick **Block (iSCSI/VMFS)** or **File (NFS)** and a capacity, and the tool shows
 ## Assumptions
 
 - **Region:** Frankfurt for all four platforms. List prices, no discounts or commitments, collected 21 Sep 2026.
-- **Units:** OCI and AWS bill per decimal GB (1 TiB = 1,099.51 GB); Azure and Google per binary GiB (1 TiB = 1,024 GiB). The tool converts.
+- **Units:** 1 TiB = **1,024** capacity units, matching each provider's own calculator. OCI and AWS label the unit "GB", Azure and Google "GiB". Check: 1,024 GB OCI Block Volume at Balanced = 1,024 x $0.0425 = **$43.52/month**, the same as the OCI cost estimator.
 - **Capacity billed is provisioned capacity**, not post-deduplication.
+- **Hours per month:** default **730**. Azure NetApp Files, Google Cloud NetApp Volumes and Filestore are billed per unit-hour, so their monthly cost is rate x hours; set 744 for a 31-day month. OCI, Elastic SAN and FSx quote flat monthly rates, so hours don't affect them.
 - **Not in the monthly figure:** FSx throughput capacity and provisioned IOPS, ANF Flexible throughput, Filestore custom performance, OCI HPMT performance units. Each is noted on the card.
 - Storage only: no VMware nodes, networking, egress, backup, support or taxes. For node pricing see [vmware-cloud-pricing-compare](https://github.com/lvaibhavt/vmware-cloud-pricing-compare).
 
