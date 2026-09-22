@@ -8,7 +8,7 @@
   const U = D.unitsPerTiB, SLICE = D.sliceGiB;
 
   const DEFAULTS = { kind: "block", tib: 100, hours: D.defaultHours };
-  let state = { ...DEFAULTS, sel: {}, tier: {} };
+  let state = { ...DEFAULTS, sel: {}, tier: {}, units: {} };
 
   const optsFor = (pid, kind) => D.options.filter(o => o.platform === pid && o.kind === kind);
   function chosen(pid) {
@@ -28,17 +28,23 @@
   // maximum, and any service-wide maximum is applied on top. This is why a
   // 900 TiB OCI datastore is not 90 IOPS x 921,600 GB — every volume stops at
   // 75,000 IOPS, exactly as the OCI cost estimator shows.
-  function perf(o, t, tib) {
+  // Fewest units the capacity can live in (each has a maximum size).
+  const minUnits = (o, tib) => Math.max(1, o.unitMaxTiB ? Math.ceil(tib / o.unitMaxTiB) : 1);
+  // Most units worth using: past this, each one is below its performance maximum anyway.
+  function bestUnits(o, t, tib) {
+    const lo = minUnits(o, tib);
+    const forCap = t && t.capIops && t.iopsPerTiB ? Math.ceil(tib / (t.capIops / t.iopsPerTiB)) : 1;
+    let n = Math.max(lo, forCap);
+    if (o.maxUnits) n = Math.min(n, o.maxUnits);
+    return Math.max(n, lo);
+  }
+  function perf(o, t, tib, unitsWanted) {
     if (!o || !t) return null;
     const unit = t.mib ? "MiB/s" : "MB/s";
     if (t.fixedMbps) return { mbps: t.fixedMbps, unit, fixed: true, units: 1 };
-    // Best split: enough units to hold the capacity, and enough that each one is
-    // sized to reach (but not waste) its per-unit maximum, within any unit-count limit.
-    const bySize = o.unitMaxTiB ? Math.ceil(tib / o.unitMaxTiB) : 1;
-    const forCap = t.capIops && t.iopsPerTiB ? Math.ceil(tib / (t.capIops / t.iopsPerTiB)) : 1;
-    let units = Math.max(1, bySize, forCap);
+    let units = unitsWanted || bestUnits(o, t, tib);
+    units = Math.max(units, minUnits(o, tib));
     if (o.maxUnits) units = Math.min(units, o.maxUnits);
-    units = Math.max(units, bySize);   // capacity still has to fit
     const perUnitTiB = tib / units;
     const cap = (perTiB, capPer, serviceMax) => {
       if (!perTiB) return null;
@@ -51,8 +57,12 @@
     const linearIops = t.iopsPerTiB ? t.iopsPerTiB * tib : null;
     const iops = cap(t.iopsPerTiB, t.capIops, o.serviceMaxIops);
     const mbps = cap(t.mbpsPerTiB, t.capMbps, o.serviceMaxMbps);
+    const perUnitIops = t.iopsPerTiB ? Math.min(t.iopsPerTiB * perUnitTiB, t.capIops || Infinity) : null;
+    const perUnitMbps = t.mbpsPerTiB ? Math.min(t.mbpsPerTiB * perUnitTiB, t.capMbps || Infinity) : null;
     return {
-      iops, mbps, unit, units, perUnitTiB,
+      iops, mbps, unit, units, perUnitTiB, perUnitIops, perUnitMbps,
+      atUnitMax: !!(t.capIops && t.iopsPerTiB * perUnitTiB >= t.capIops),
+      serviceCapped: !!(o.serviceMaxIops && iops >= o.serviceMaxIops),
       wIops: t.writeIopsPerTiB ? t.writeIopsPerTiB * tib : null,
       wMbps: t.writeMbpsPerTiB ? t.writeMbpsPerTiB * tib : null,
       limited: !!(linearIops && iops && iops < linearIops - 1),
@@ -69,15 +79,16 @@
     if (t.capMbps) bits.push(`${num(t.capMbps)} ${t.mib ? "MiB/s" : "MB/s"}`);
     return bits.length ? `${bits.join(" · ")} max ${o.capScope}` : "No published per-unit maximum";
   }
+  // "32 volumes × 25,000 IOPS each = 800,000 IOPS in total"
   function totalText(o, p) {
     if (!p) return "";
-    if (p.fixed) return `same at any capacity`;
-    const bits = [];
-    if (p.iops) bits.push(`${num(p.iops)} IOPS`);
-    if (p.mbps) bits.push(`${num(p.mbps)} ${p.unit}`);
-    if (!bits.length) return "throughput-based QoS";
-    return `${bits.join(" · ")} across ${p.units} ${o.unitLabel || "volume"}${p.units > 1 ? "s" : ""}`;
+    if (p.fixed) return "same at any capacity";
+    if (!p.iops && !p.mbps) return "throughput-based QoS";
+    const label = (o.unitLabel || "volume") + (p.units > 1 ? "s" : "");
+    if (p.iops) return `${p.units} ${label} × ${num(p.perUnitIops)} IOPS each = ${num(p.iops)} IOPS in total`;
+    return `${p.units} ${label} × ${num(p.perUnitMbps)} ${p.unit} each = ${num(p.mbps)} ${p.unit} in total`;
   }
+  const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
 
   // ---------- picker cards ----------
   function renderPickers() {
@@ -89,7 +100,7 @@
           <div class="pv-body"><div class="nosupport"><b>No ${esc(state.kind)} option</b>
             <span>${esc((D.gaps[state.kind] || {})[pid] || "")}</span></div></div></div>`;
       }
-      const o = chosen(pid), t = tierOf(o), pf = perf(o, t, state.tib), cost = monthly(o, t);
+      const o = chosen(pid), t = tierOf(o), pf = perf(o, t, state.tib, state.units[pid]), cost = monthly(o, t);
       return `<div class="card pv${p.baseline ? " base" : ""}${o.partner ? " partner" : ""}" data-pid="${pid}">
         <div class="pv-head"><span class="dot" style="background:${p.accent}"></span>
           <div><div class="pv-name">${esc(p.name)}${p.baseline ? '<span class="tag">BASELINE</span>' : ""}</div>
@@ -105,8 +116,11 @@
             <span class="chip">${esc(o.datastore)}</span>
             <span class="chip">${esc(o.media)}</span>
           </div>
+          ${pf && !pf.fixed && o.unitMaxTiB ? `<label>${esc(cap1(o.unitLabel || "volume"))}s the capacity is split into
+            <input type="number" data-k="units" min="${minUnits(o, state.tib)}" max="${o.maxUnits || 999}" value="${pf.units}">
+            <span class="hint">${pf.units} × ${pf.perUnitTiB.toFixed(pf.perUnitTiB < 10 ? 2 : 1)} TiB${o.maxUnits ? ` · max ${o.maxUnits}` : ""}</span></label>` : ""}
           <div class="foot-row">
-            <div class="perf">${esc(perUnitText(o, t))}<span>${esc(totalText(o, pf))} at ${state.tib} TiB</span></div>
+            <div class="perf">${esc(perUnitText(o, t))}<span>${esc(totalText(o, pf))}</span></div>
             <div class="rate">${o.priceOnRequest ? "on request" : usd(cost, 0)}<span>per month</span></div>
           </div>
         </div></div>`;
@@ -119,7 +133,7 @@
       const o = chosen(pid);
       if (!o) return { pid, none: true, platform: D.platforms[pid] };
       const t = tierOf(o);
-      return { pid, platform: D.platforms[pid], o, t, cost: monthly(o, t), pf: perf(o, t, state.tib), slice: perf(o, t, SLICE / 1024) };
+      return { pid, platform: D.platforms[pid], o, t, cost: monthly(o, t), pf: perf(o, t, state.tib, state.units[pid]), slice: perf(o, t, SLICE / 1024, 1) };
     });
     const base = cols[0];
     const notes = [];
@@ -175,24 +189,30 @@
       if (c.none) return na;
       return c.o.unitMaxTiB ? `${c.o.unitMaxTiB} TiB ${c.o.capScope}` : "Not published";
     });
-    row(`Best split for ${state.tib} TiB`, c => {
+    row(`How ${state.tib} TiB is split`, c => {
       if (c.none || !c.pf) return na;
-      const n = c.pf.units;
-      const label = c.o.unitLabel || "volume";
-      return `${n} × ${(c.pf.perUnitTiB).toFixed(c.pf.perUnitTiB < 10 ? 2 : 1)} TiB ${label}${n > 1 ? "s" : ""}` +
-        (c.pf.overUnits ? mark(`${c.o.name}: an OCVS SDDC allows at most ${c.o.maxUnits} volumes, so this capacity needs more than one datastore pool.`) : "");
+      const n = c.pf.units, label = (c.o.unitLabel || "volume") + (n > 1 ? "s" : "");
+      if (c.pf.fixed) return "1 mount target";
+      return `${n} ${label} × ${(c.pf.perUnitTiB).toFixed(c.pf.perUnitTiB < 10 ? 2 : 1)} TiB each`;
+    });
+    row("IOPS each one gets", c => {
+      if (c.none || !c.pf || c.pf.fixed) return na;
+      if (!c.pf.perUnitIops) return "not published";
+      return num(c.pf.perUnitIops) + (c.pf.atUnitMax ? ` (at the ${num(c.t.capIops)} maximum)` : ` (below the ${num(c.t.capIops)} maximum)`);
     });
     row(`Total IOPS at ${state.tib} TiB`, c => {
       if (c.none || !c.pf) return na;
       if (c.pf.fixed) return "n/a";
       if (!c.pf.iops) return "not published";
-      return num(c.pf.iops) + (c.pf.wIops ? ` read · ${num(c.pf.wIops)} write` : "") +
-        (c.pf.limited ? mark(`${c.o.name}: each ${c.o.unitLabel || "volume"} stops at ${num(c.t.capIops)} IOPS, so the total is ${c.pf.units} × ${num(Math.min(c.t.iopsPerTiB * c.pf.perUnitTiB, c.t.capIops))} IOPS — not the per-TiB rate × total capacity.`) : "");
+      const sum = `${c.pf.units} × ${num(c.pf.perUnitIops)} = ${num(c.pf.iops)}`;
+      return sum + (c.pf.wIops ? ` (read)` : "") +
+        (c.pf.serviceCapped ? mark(`${c.o.name}: the service-wide maximum of ${num(c.o.serviceMaxIops)} IOPS applies, so the total stops there however the capacity is split.`) : "");
     }, { strong: true });
     row(`Total throughput at ${state.tib} TiB`, c => {
       if (c.none || !c.pf) return na;
       if (!c.pf.mbps) return "not published";
-      return `${num(c.pf.mbps)} ${c.pf.unit}` + (c.pf.wMbps ? ` read · ${num(c.pf.wMbps)} write` : "") +
+      return (c.pf.fixed ? `${num(c.pf.mbps)} ${c.pf.unit}` : `${c.pf.units} × ${num(c.pf.perUnitMbps)} = ${num(c.pf.mbps)} ${c.pf.unit}`) +
+        (c.pf.wMbps ? ` read · ${num(c.pf.wMbps)} write` : "") +
         (c.pf.fixed ? mark(`${c.o.name}: throughput comes from the mount target, so it is the same at any capacity.`) : "");
     }, { strong: true });
     row(`Performance of a ${SLICE} GiB volume`, c => {
@@ -266,7 +286,7 @@
   document.addEventListener("click", e => {
     const seg = e.target.closest(".seg button");
     if (seg) { state.kind = seg.dataset.v; return update(); }
-    if (e.target.closest("#reset")) { state = { ...DEFAULTS, sel: {}, tier: {} }; return update(); }
+    if (e.target.closest("#reset")) { state = { ...DEFAULTS, sel: {}, tier: {}, units: {} }; return update(); }
   });
   document.addEventListener("change", e => {
     const el = e.target;
@@ -277,6 +297,10 @@
     const pid = card.dataset.pid;
     if (el.dataset.k === "opt") state.sel[pid] = el.value;
     if (el.dataset.k === "tier") state.tier[chosen(pid).id] = el.value;
+    if (el.dataset.k === "units") {
+      const o = chosen(pid);
+      state.units[pid] = Math.max(minUnits(o, state.tib), Math.min(o.maxUnits || 999, +el.value || 1));
+    }
     update();
   });
 

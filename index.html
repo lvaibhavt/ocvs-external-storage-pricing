@@ -48,13 +48,15 @@
   <section class="panel disclaimer">
     <h2>How to read the performance rows</h2>
     <ul>
-      <li><b>The figure on each card</b> is the maximum for <i>one</i> volume, file system or mount target — the same number the provider's own calculator shows (OCI Balanced: 25,000 IOPS). Underneath it is the total across all the volumes your capacity needs.</li>
-      <li><b>IOPS / throughput per TiB</b> — the provider's published rate, e.g. OCI Balanced = 60 IOPS per GB (61,440 per TiB), Elastic SAN = 5,000 IOPS per TiB.</li>
-      <li><b>Maximum for one volume / instance</b> — the most a single volume, SAN, file system or mount target can deliver, however large you make it. This is the "Max IOPS" figure in the OCI cost estimator: an OCI volume stops at 25,000 IOPS on Balanced and 75,000 on Ultra High.</li>
-      <li><b>Capacity limit for one volume / instance</b> — how big a single volume, file system or instance can be (32 TiB for OCI Block Volume, 64 TiB for an Elastic SAN volume, 192 TiB for an FSx file system).</li>
-      <li><b>Best split</b> — how many volumes, file systems or instances the capacity is divided into to get the most performance, respecting each service's size and count limits (an OCVS SDDC allows 32 volumes, for example).</li>
-      <li><b>Total IOPS / throughput</b> — the per-unit maximum multiplied by the number of units, then capped by any service-wide maximum. So 900 TiB on OCI Ultra High is 32 volumes × 75,000 = 2,400,000 IOPS, <b>not</b> 90 IOPS/GB × 921,600 GB.</li>
-      <li><b>Performance of a 100 GiB volume</b> — what one small volume gets, which is where the per-GB rate matters most.</li>
+      <li><b>A datastore is built from several volumes, and each volume has its own IOPS limit.</b> The total is simply those limits added up:
+        <br><b>number of volumes × IOPS each volume gets = total IOPS</b>.
+        <br>Example, 100 TiB of OCI Block Volume at Balanced: split into <b>32 volumes of 3.13 TiB</b>, each capped at <b>25,000 IOPS</b>, giving <b>32 × 25,000 = 800,000 IOPS</b>. Split the same 100 TiB into only <b>4 volumes of 25 TiB</b> and you get <b>4 × 25,000 = 100,000 IOPS</b> — same capacity, same price, a quarter of the performance. Use the <b>volumes</b> box on each card to try both.</li>
+      <li><b>The big figure on each card</b> is the maximum for <i>one</i> volume, file system or mount target — the same number the provider's calculator shows (OCI Balanced: 25,000 IOPS). The line under it shows the sum.</li>
+      <li><b>IOPS / throughput per TiB</b> — the published rate, e.g. OCI Balanced = 60 IOPS per GB (61,440 per TiB), Elastic SAN = 5,000 IOPS per TiB. A volume gets this rate until it hits its maximum.</li>
+      <li><b>Capacity limit for one volume / instance</b> — how big one volume can be: 32 TiB for OCI Block Volume, 64 TiB for an Elastic SAN volume, 192 TiB for an FSx file system. This sets the <i>fewest</i> volumes you can use.</li>
+      <li><b>IOPS each one gets</b> — what a single volume of that size delivers, and whether it is at its maximum or below it.</li>
+      <li><b>Total IOPS / throughput</b> — the multiplication written out, then capped by any service-wide maximum (Elastic SAN stops at 2,000,000 IOPS, for instance).</li>
+      <li><b>Performance of a 100 GiB volume</b> — what one small volume gets, where the per-GB rate matters most.</li>
     </ul>
     <h2>Read before quoting these figures</h2>
     <ul>

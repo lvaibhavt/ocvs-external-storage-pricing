@@ -10,7 +10,14 @@ Pick **Block (iSCSI/VMFS)** or **File (NFS)** and a capacity, then choose a serv
 - **Protocol & media:** protocol, datastore type, media (NVMe SSD, flash, SSD), minimum and maximum size
 - **Performance:** the per-TiB rate, the maximum one volume/instance can deliver, its capacity limit, the best split for your capacity, the resulting total, and what a single 100 GiB volume gets
 
-Totals respect the published per-volume maxima: 900 TiB of OCI Block Volume at Ultra High is 32 volumes x 75,000 IOPS = 2,400,000 IOPS, not 90 IOPS/GB x 921,600 GB. That 75,000 is the "Max IOPS" figure shown in the OCI cost estimator.
+A datastore is built from several volumes, and each volume has its own IOPS limit, so the total is **number of volumes x IOPS per volume**. Every card has a **volumes** box, because the split changes the answer:
+
+| 100 TiB of OCI Block Volume, Balanced | Volumes | IOPS each | Total | Price |
+|---|---|---|---|---|
+| Fewest volumes (32 TiB is the per-volume limit) | 4 x 25 TiB | 25,000 | **100,000** | $4,352/mo |
+| Most volumes (32 per SDDC) | 32 x 3.13 TiB | 25,000 | **800,000** | $4,352/mo |
+
+That 25,000 per volume is the "Max IOPS" figure shown in the OCI cost estimator.
 - **Pricing:** rate per unit-month, per TiB, at the chosen capacity, and over 3 years, with savings against OCVS
 
 ## What's covered
