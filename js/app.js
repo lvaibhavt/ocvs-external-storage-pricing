@@ -59,13 +59,24 @@
       overUnits: !!(o.maxUnits && units > o.maxUnits)
     };
   }
-  function perfShort(p) {
-    if (!p) return "—";
-    if (p.fixed) return `${num(p.mbps)} ${p.unit} (fixed)`;
+  // Per-unit figure first — that is what each provider's own calculator shows —
+  // then the total across the units the capacity needs.
+  function perUnitText(o, t) {
+    if (!t) return "—";
+    if (t.fixedMbps) return `${num(t.fixedMbps)} ${t.mib ? "MiB/s" : "MB/s"} ${o.capScope}`;
+    const bits = [];
+    if (t.capIops) bits.push(`${num(t.capIops)} IOPS`);
+    if (t.capMbps) bits.push(`${num(t.capMbps)} ${t.mib ? "MiB/s" : "MB/s"}`);
+    return bits.length ? `${bits.join(" · ")} max ${o.capScope}` : "No published per-unit maximum";
+  }
+  function totalText(o, p) {
+    if (!p) return "";
+    if (p.fixed) return `same at any capacity`;
     const bits = [];
     if (p.iops) bits.push(`${num(p.iops)} IOPS`);
     if (p.mbps) bits.push(`${num(p.mbps)} ${p.unit}`);
-    return bits.length ? bits.join(" · ") : "throughput-based QoS";
+    if (!bits.length) return "throughput-based QoS";
+    return `${bits.join(" · ")} across ${p.units} ${o.unitLabel || "volume"}${p.units > 1 ? "s" : ""}`;
   }
 
   // ---------- picker cards ----------
@@ -95,7 +106,7 @@
             <span class="chip">${esc(o.media)}</span>
           </div>
           <div class="foot-row">
-            <div class="perf">${esc(perfShort(pf))}<span>at ${state.tib} TiB</span></div>
+            <div class="perf">${esc(perUnitText(o, t))}<span>${esc(totalText(o, pf))} at ${state.tib} TiB</span></div>
             <div class="rate">${o.priceOnRequest ? "on request" : usd(cost, 0)}<span>per month</span></div>
           </div>
         </div></div>`;
