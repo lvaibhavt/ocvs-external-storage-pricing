@@ -4,25 +4,18 @@ Which **external datastore** options exist for VMware on each hyperscaler, what 
 
 **Live tool:** https://lvaibhavt.github.io/ocvs-external-storage-pricing/
 
-Pick **Block (iSCSI/VMFS)** or **File (NFS)** and a capacity, then choose a service and tier per platform. The comparison table lays them out side by side, in the same format as the [node pricing tool](https://github.com/lvaibhavt/vmware-cloud-pricing-compare):
+Pick **Block (iSCSI/VMFS)** or **File (NFS)**, a datastore size in whole TiB, and a service and performance level per platform. The table compares them side by side, in the same format as the [node pricing tool](https://github.com/lvaibhavt/vmware-cloud-pricing-compare):
 
-- **Configuration:** region, service, tier, first-party or partner
-- **Protocol & media:** protocol, datastore type, media (NVMe SSD, flash, SSD), minimum and maximum size
-- **Performance:** the per-TiB rate, the maximum one volume/instance can deliver, its capacity limit, the best split for your capacity, the resulting total, and what a single 100 GiB volume gets
+- **Configuration:** region, service, performance level, ownership
+- **Protocol & media:** protocol, datastore type, media, size limits
+- **Performance:** the published rate, the maximum per volume, and the expected IOPS and throughput for your datastore
+- **Monthly price:** rate, per TiB, total per month, and the monthly saving against OCVS
 
-A datastore is built from several volumes, and each volume has its own IOPS limit, so the total is **number of volumes x IOPS per volume**. Every card has a **volumes** box, because the split changes the answer:
+**One datastore = one volume**, grown in whole TiB, which is how OCVS datastores are normally built. A 20 TiB OCI Block Volume at Balanced therefore shows **25,000 IOPS, 480 MB/s and $870/month**, the same as the OCI cost estimator. Only a datastore larger than one volume can be (32 TiB for OCI) uses more than one.
 
-| 100 TiB of OCI Block Volume, Balanced | Volumes | IOPS each | Total | Price |
-|---|---|---|---|---|
-| Fewest volumes, the default (32 TiB is the per-volume limit) | 4 x 25 TiB | 25,000 | **100,000** | $4,352/mo |
-| Most volumes (32 per SDDC) | 32 x 3.13 TiB | 25,000 | **800,000** | $4,352/mo |
-
-A volume only earns performance with size until it hits its maximum: OCI Balanced earns 60 IOPS per GB and reaches 25,000 at **417 GB**, so a 1 TiB volume and a 32 TiB volume both deliver 25,000. Elastic SAN reaches its 80,000 at 16 TiB, FSx its 200,000 at 65 TiB.
-
-Throughput follows Oracle's binary convention: 480 KB/s per GB means a 100 GB volume gets **46 MB/s** (480 x 100 / 1024) and a 1 TiB volume gets **480 MB/s**, its maximum - the same figures the OCI cost estimator shows.
-
-That 25,000 per volume is the "Max IOPS" figure shown in the OCI cost estimator.
-- **Pricing:** rate per unit-month, per TiB, at the chosen capacity, and over 3 years, with savings against OCVS
+For more on OCI storage performance with OCVS, see Oracle's articles:
+[Performance of OCI Block Volume with OCVS standard shapes](https://blogs.oracle.com/cloud-infrastructure/performance-oci-block-volume-ocvs-standard-shapes) and
+[How OCI set new storage performance standards](https://blogs.oracle.com/cloud-infrastructure/how-oci-set-new-storage-performance-standards).
 
 ## What's covered
 

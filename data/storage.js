@@ -21,7 +21,6 @@ window.STORAGE = {
   asOf: "21 Sep 2026",
   defaultHours: 730,
   unitsPerTiB: 1024,
-  sliceGiB: 100,          // the "what does a 100 GiB volume get?" row
   region: "Frankfurt",
 
   platforms: {
@@ -43,7 +42,7 @@ window.STORAGE = {
       protocol: "iSCSI", datastore: "VMFS", media: "NVMe SSD", ownership: "Oracle first-party", unit: "GB",
       scaling: "Scales per volume", capScope: "per volume", unitLabel: "volume",
       unitMaxTiB: 32, maxUnits: 32,
-      minSize: "50 GB", maxSize: "32 TB per volume · 32 volumes per SDDC",
+      minSize: "50 GB", maxSize: "32 TB per volume",
       tiers: [
         { id: "0", label: "Lower Cost (0 VPU)", price: 0.0255, iopsPerGB: 2, kbpsPerGB: 240, iopsPerTiB: 2048, mbpsPerTiB: 240, capIops: 3000, capMbps: 480 },
         { id: "10", label: "Balanced (10 VPU)", price: 0.0425, iopsPerGB: 60, kbpsPerGB: 480, iopsPerTiB: 61440, mbpsPerTiB: 480, capIops: 25000, capMbps: 480, default: true },
@@ -51,9 +50,8 @@ window.STORAGE = {
         { id: "30", label: "Ultra High (30 VPU)", price: 0.0765, iopsPerGB: 90, kbpsPerGB: 720, iopsPerTiB: 92160, mbpsPerTiB: 720, capIops: 75000, capMbps: 880 }
       ],
       notes: [
-        "Balanced gives 60 IOPS and 480 KB/s per GB, so a 100 GB volume gets 6,000 IOPS and 46 MB/s, exactly as the OCI cost estimator shows.",
-        "Oracle quotes KB/s in binary units, so 480 KB/s per GB is 480 MB/s for a 1 TiB volume — which is also that volume's maximum.",
-        "Each volume stops at its maximum (25,000 IOPS at Balanced, 75,000 at Ultra High), so large datastores are built from several volumes and their performance adds up — this is what the OCI cost estimator shows as \"Max IOPS\".",
+        "Balanced: 60 IOPS and 480 KB/s per GB, up to 25,000 IOPS and 480 MB/s per volume — the same figures as the OCI cost estimator.",
+        "Higher levels raise the maximum per volume: 50,000 IOPS at Higher Performance, 75,000 at Ultra High (30 VPU).",
         "The performance level can be changed online, with no downtime."
       ],
       links: [["OCI price list", "https://www.oracle.com/cloud/price-list/#block-volume"],
@@ -65,7 +63,7 @@ window.STORAGE = {
       protocol: "iSCSI", datastore: "VMFS", media: "SSD", ownership: "Azure first-party", unit: "GiB",
       scaling: "Scales per SAN, from base capacity only", capScope: "per volume", unitLabel: "volume",
       unitMaxTiB: 64, serviceMaxIops: 2000000, serviceMaxMbps: 80000, serviceMaxBaseTiB: 400,
-      minSize: "1 TiB SAN", maxSize: "64 TiB per volume · 400 TiB base capacity",
+      minSize: "1 TiB SAN", maxSize: "64 TiB per volume",
       tiers: [
         { id: "lrs", label: "Premium LRS — base capacity", price: 0.095, iopsPerTiB: 5000, mbpsPerTiB: 200, capIops: 80000, capMbps: 1280, default: true },
         { id: "lrs-add", label: "Premium LRS — additional capacity", price: 0.07125, iopsPerTiB: 0, mbpsPerTiB: 0, capIops: 0, capMbps: 0 },
@@ -74,7 +72,7 @@ window.STORAGE = {
       notes: [
         "Only base capacity adds performance: 5,000 IOPS and 200 MB/s per TiB. Additional capacity adds none and costs 25% less.",
         "SAN performance is shared across all volumes; one volume tops out at 80,000 IOPS / 1,280 MB/s.",
-        "A volume needs 106 GiB for maximum IOPS and 21 GiB for maximum throughput."
+        "Minimum SAN size is 1 TiB."
       ],
       links: [["AVS + Elastic SAN", "https://learn.microsoft.com/en-us/azure/azure-vmware/configure-azure-elastic-san"],
               ["Scale targets", "https://learn.microsoft.com/en-us/azure/storage/elastic-san/elastic-san-scale-targets"],
@@ -169,7 +167,6 @@ window.STORAGE = {
       ],
       notes: [
         "Throughput follows the service level and the volume quota: 16 / 64 / 128 MiB/s per TiB for Standard / Premium / Ultra.",
-        "A 100 GiB Premium volume gets 6.25 MiB/s — performance follows the volume, not the pool.",
         "Microsoft publishes throughput, not IOPS, for the service levels.",
         "Flexible decouples capacity from throughput: minimum 128 MiB/s, then $2.93 per MiB/s per month, not in the price shown."
       ],

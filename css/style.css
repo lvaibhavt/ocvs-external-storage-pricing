@@ -100,3 +100,11 @@ table td.na { color: var(--muted); font-style: italic; }
 .disclaimer li { margin: 3px 0; }
 .pv-body .hint { display: block; font-size: 11px; font-weight: 400; color: var(--muted); margin-top: 2px; }
 .pv-body input[type=number] { width: 100%; }
+h2.small { font-size: 16px; color: var(--navy); margin: 0 0 8px; }
+.svc-notes details { border-top: 1px solid var(--line); padding: 8px 0; }
+.svc-notes summary { cursor: pointer; font-weight: 700; color: var(--ink); font-size: 14px; }
+.svc-notes ul { margin: 6px 0; padding-left: 20px; font-size: 13px; color: var(--body); }
+.svc-notes .links { font-size: 13px; margin: 4px 0 0; }
+.svc-notes .links a, .disclaimer a { color: #0052cc; text-decoration: none; }
+.svc-notes .links a:hover, .disclaimer a:hover { text-decoration: underline; }
+.disclaimer .more { font-size: 13px; margin: 8px 0 14px; }
