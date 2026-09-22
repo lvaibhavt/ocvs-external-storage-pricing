@@ -41,7 +41,8 @@ window.STORAGE = {
     {
       id: "oci-block", platform: "ocvs", kind: "block", name: "OCI Block Volume",
       protocol: "iSCSI", datastore: "VMFS", media: "NVMe SSD", ownership: "Oracle first-party", unit: "GB",
-      scaling: "Scales per volume", capScope: "per volume",
+      scaling: "Scales per volume", capScope: "per volume", unitLabel: "volume",
+      unitMaxTiB: 32, maxUnits: 32,
       minSize: "50 GB", maxSize: "32 TB per volume · 32 volumes per SDDC",
       tiers: [
         { id: "0", label: "Lower Cost (0 VPU)", price: 0.0255, iopsPerTiB: 2048, mbpsPerTiB: 245.76, capIops: 3000, capMbps: 480 },
@@ -51,7 +52,7 @@ window.STORAGE = {
       ],
       notes: [
         "Balanced gives 60 IOPS and 480 KB/s per GB, so a 100 GB volume gets 6,000 IOPS — performance follows each volume, not the datastore.",
-        "Per-volume ceilings apply; a datastore spanning several volumes adds their performance together.",
+        "Each volume stops at its maximum (25,000 IOPS at Balanced, 75,000 at Ultra High), so large datastores are built from several volumes and their performance adds up — this is what the OCI cost estimator shows as \"Max IOPS\".",
         "The performance level can be changed online, with no downtime."
       ],
       links: [["OCI price list", "https://www.oracle.com/cloud/price-list/#block-volume"],
@@ -61,8 +62,9 @@ window.STORAGE = {
     {
       id: "elastic-san", platform: "avs", kind: "block", name: "Azure Elastic SAN",
       protocol: "iSCSI", datastore: "VMFS", media: "SSD", ownership: "Azure first-party", unit: "GiB",
-      scaling: "Scales per SAN, from base capacity only", capScope: "per volume",
-      minSize: "1 TiB SAN", maxSize: "64 TiB per volume",
+      scaling: "Scales per SAN, from base capacity only", capScope: "per volume", unitLabel: "volume",
+      unitMaxTiB: 64, serviceMaxIops: 2000000, serviceMaxMbps: 80000, serviceMaxBaseTiB: 400,
+      minSize: "1 TiB SAN", maxSize: "64 TiB per volume · 400 TiB base capacity",
       tiers: [
         { id: "lrs", label: "Premium LRS — base capacity", price: 0.095, iopsPerTiB: 5000, mbpsPerTiB: 200, capIops: 80000, capMbps: 1280, default: true },
         { id: "lrs-add", label: "Premium LRS — additional capacity", price: 0.07125, iopsPerTiB: 0, mbpsPerTiB: 0, capIops: 0, capMbps: 0 },
@@ -109,11 +111,12 @@ window.STORAGE = {
       id: "fsx-block", platform: "evs", kind: "block", name: "Amazon FSx for NetApp ONTAP",
       protocol: "iSCSI / NVMe", datastore: "VMFS", media: "SSD (+ optional cold tier)",
       ownership: "AWS first-party — NetApp ONTAP", unit: "GB",
-      scaling: "Scales per file system, capped by throughput capacity", capScope: "per file system",
+      scaling: "Scales per file system, capped by throughput capacity", capScope: "per file system", unitLabel: "file system",
+      unitMaxTiB: 192,
       minSize: "1,024 GiB SSD", maxSize: "192 TiB SSD per HA pair",
       tiers: [
-        { id: "single", label: "Single-AZ SSD", price: 0.149, iopsPerTiB: 3072, mbpsPerTiB: 768, default: true },
-        { id: "multi", label: "Multi-AZ SSD", price: 0.298, iopsPerTiB: 3072, mbpsPerTiB: 768 },
+        { id: "single", label: "Single-AZ SSD", price: 0.149, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144, default: true },
+        { id: "multi", label: "Multi-AZ SSD", price: 0.298, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144 },
         { id: "pool", label: "Capacity pool (cold tier)", price: 0.0233, iopsPerTiB: 0, mbpsPerTiB: 0, pool: true }
       ],
       notes: [
@@ -154,7 +157,8 @@ window.STORAGE = {
     {
       id: "anf", platform: "avs", kind: "file", name: "Azure NetApp Files",
       protocol: "NFS", datastore: "NFS", media: "Bare-metal flash (NetApp)", ownership: "Azure first-party", unit: "GiB",
-      scaling: "Scales per volume, with the assigned quota", capScope: "per volume",
+      scaling: "Scales per volume, with the assigned quota", capScope: "per volume", unitLabel: "volume",
+      unitMaxTiB: 100,
       minSize: "1 TiB capacity pool", maxSize: "1 PiB pool · 100 TiB large volume",
       tiers: [
         { id: "standard", label: "Standard", priceHr: 0.000202, mbpsPerTiB: 16, mib: true },
@@ -175,7 +179,8 @@ window.STORAGE = {
     {
       id: "gcnv", platform: "gcve", kind: "file", name: "Google Cloud NetApp Volumes",
       protocol: "NFSv3", datastore: "NFS", media: "Not published by Google", ownership: "Google first-party — NetApp", unit: "GiB",
-      scaling: "Scales per volume, with provisioned capacity", capScope: "per storage pool",
+      scaling: "Scales per volume, with provisioned capacity", capScope: "per storage pool", unitLabel: "volume",
+      unitMaxTiB: 100,
       minSize: "1 TiB storage pool", maxSize: "Varies by service level",
       tiers: [
         { id: "standard", label: "Standard", priceHr: 0.000315068, mbpsPerTiB: 16, mib: true },
@@ -195,7 +200,8 @@ window.STORAGE = {
     {
       id: "filestore", platform: "gcve", kind: "file", name: "Filestore",
       protocol: "NFSv3", datastore: "NFS", media: "SSD", ownership: "Google first-party", unit: "GiB",
-      scaling: "Scales per instance, with capacity", capScope: "per instance",
+      scaling: "Scales per instance, with capacity", capScope: "per instance", unitLabel: "instance",
+      unitMaxTiB: 100,
       minSize: "10 TiB to be VMware-certified", maxSize: "100 TiB per instance",
       tiers: [
         { id: "zonal", label: "Zonal", priceHr: 0.000410959, iopsPerTiB: 9200, mbpsPerTiB: 260, mib: true, writeIopsPerTiB: 2600, writeMbpsPerTiB: 88, default: true },
@@ -215,11 +221,12 @@ window.STORAGE = {
       id: "fsx-file", platform: "evs", kind: "file", name: "Amazon FSx for NetApp ONTAP",
       protocol: "NFSv3 / NFSv4.1", datastore: "NFS", media: "SSD (+ optional cold tier)",
       ownership: "AWS first-party — NetApp ONTAP", unit: "GB",
-      scaling: "Scales per file system, capped by throughput capacity", capScope: "per file system",
+      scaling: "Scales per file system, capped by throughput capacity", capScope: "per file system", unitLabel: "file system",
+      unitMaxTiB: 192,
       minSize: "1,024 GiB SSD", maxSize: "192 TiB SSD per HA pair",
       tiers: [
-        { id: "single", label: "Single-AZ SSD", price: 0.149, iopsPerTiB: 3072, mbpsPerTiB: 768, default: true },
-        { id: "multi", label: "Multi-AZ SSD", price: 0.298, iopsPerTiB: 3072, mbpsPerTiB: 768 },
+        { id: "single", label: "Single-AZ SSD", price: 0.149, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144, default: true },
+        { id: "multi", label: "Multi-AZ SSD", price: 0.298, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144 },
         { id: "pool", label: "Capacity pool (cold tier)", price: 0.0233, iopsPerTiB: 0, mbpsPerTiB: 0, pool: true }
       ],
       notes: [

@@ -23,20 +23,40 @@
   const unitRate = t => (t ? (t.priceHr != null ? t.priceHr * state.hours : t.price) : null);
   const monthly = (o, t) => (o && t && !o.priceOnRequest ? unitRate(t) * state.tib * U : null);
 
-  // Performance at a given capacity, honouring the documented ceilings.
+  // What you actually get at a capacity: the capacity is split into the fewest
+  // volumes / instances the service allows, each one is capped at its published
+  // maximum, and any service-wide maximum is applied on top. This is why a
+  // 900 TiB OCI datastore is not 90 IOPS x 921,600 GB — every volume stops at
+  // 75,000 IOPS, exactly as the OCI cost estimator shows.
   function perf(o, t, tib) {
     if (!o || !t) return null;
     const unit = t.mib ? "MiB/s" : "MB/s";
-    if (t.fixedMbps) return { mbps: t.fixedMbps, unit, fixed: true };
-    // Linear scale; per-unit ceilings are reported separately (see "Ceiling" row),
-    // because a datastore usually spans several volumes/instances.
-    const iops = t.iopsPerTiB ? t.iopsPerTiB * tib : null;
-    const mbps = t.mbpsPerTiB ? t.mbpsPerTiB * tib : null;
+    if (t.fixedMbps) return { mbps: t.fixedMbps, unit, fixed: true, units: 1 };
+    // Best split: enough units to hold the capacity, and enough that each one is
+    // sized to reach (but not waste) its per-unit maximum, within any unit-count limit.
+    const bySize = o.unitMaxTiB ? Math.ceil(tib / o.unitMaxTiB) : 1;
+    const forCap = t.capIops && t.iopsPerTiB ? Math.ceil(tib / (t.capIops / t.iopsPerTiB)) : 1;
+    let units = Math.max(1, bySize, forCap);
+    if (o.maxUnits) units = Math.min(units, o.maxUnits);
+    units = Math.max(units, bySize);   // capacity still has to fit
+    const perUnitTiB = tib / units;
+    const cap = (perTiB, capPer, serviceMax) => {
+      if (!perTiB) return null;
+      let v = perTiB * perUnitTiB;
+      if (capPer) v = Math.min(v, capPer);
+      v *= units;
+      if (serviceMax) v = Math.min(v, serviceMax);
+      return v;
+    };
+    const linearIops = t.iopsPerTiB ? t.iopsPerTiB * tib : null;
+    const iops = cap(t.iopsPerTiB, t.capIops, o.serviceMaxIops);
+    const mbps = cap(t.mbpsPerTiB, t.capMbps, o.serviceMaxMbps);
     return {
-      iops, mbps, unit,
+      iops, mbps, unit, units, perUnitTiB,
       wIops: t.writeIopsPerTiB ? t.writeIopsPerTiB * tib : null,
       wMbps: t.writeMbpsPerTiB ? t.writeMbpsPerTiB * tib : null,
-      capped: !!(t.capIops && t.iopsPerTiB * tib > t.capIops), capIops: t.capIops, capMbps: t.capMbps
+      limited: !!(linearIops && iops && iops < linearIops - 1),
+      overUnits: !!(o.maxUnits && units > o.maxUnits)
     };
   }
   function perfShort(p) {
@@ -132,27 +152,38 @@
       const u = c.t.mib ? "MiB/s" : "MB/s";
       return `${num(c.t.mbpsPerTiB)} ${u}` + (c.t.writeMbpsPerTiB ? ` read · ${num(c.t.writeMbpsPerTiB)} write` : "");
     });
-    row(`IOPS at ${state.tib} TiB`, c => {
+    row("Maximum for one volume / instance", c => {
+      if (c.none || !c.t) return na;
+      if (c.t.fixedMbps) return `${num(c.t.fixedMbps)} ${c.t.mib ? "MiB/s" : "MB/s"} ${c.o.capScope}`;
+      const bits = [];
+      if (c.t.capIops) bits.push(`${num(c.t.capIops)} IOPS`);
+      if (c.t.capMbps) bits.push(`${num(c.t.capMbps)} ${c.t.mib ? "MiB/s" : "MB/s"}`);
+      return bits.length ? `${bits.join(" · ")} ${c.o.capScope}` : "Not published";
+    });
+    row("Capacity limit for one volume / instance", c => {
+      if (c.none) return na;
+      return c.o.unitMaxTiB ? `${c.o.unitMaxTiB} TiB ${c.o.capScope}` : "Not published";
+    });
+    row(`Best split for ${state.tib} TiB`, c => {
+      if (c.none || !c.pf) return na;
+      const n = c.pf.units;
+      const label = c.o.unitLabel || "volume";
+      return `${n} × ${(c.pf.perUnitTiB).toFixed(c.pf.perUnitTiB < 10 ? 2 : 1)} TiB ${label}${n > 1 ? "s" : ""}` +
+        (c.pf.overUnits ? mark(`${c.o.name}: an OCVS SDDC allows at most ${c.o.maxUnits} volumes, so this capacity needs more than one datastore pool.`) : "");
+    });
+    row(`Total IOPS at ${state.tib} TiB`, c => {
       if (c.none || !c.pf) return na;
       if (c.pf.fixed) return "n/a";
       if (!c.pf.iops) return "not published";
       return num(c.pf.iops) + (c.pf.wIops ? ` read · ${num(c.pf.wIops)} write` : "") +
-        (c.pf.capped ? mark(`${c.o.name}: the ${num(c.t.capIops)} IOPS ceiling applies ${c.o.capScope}, so reaching this total needs the capacity split across several ${c.o.capScope === "per volume" ? "volumes" : "instances"}.`) : "");
+        (c.pf.limited ? mark(`${c.o.name}: each ${c.o.unitLabel || "volume"} stops at ${num(c.t.capIops)} IOPS, so the total is ${c.pf.units} × ${num(Math.min(c.t.iopsPerTiB * c.pf.perUnitTiB, c.t.capIops))} IOPS — not the per-TiB rate × total capacity.`) : "");
     }, { strong: true });
-    row(`Throughput at ${state.tib} TiB`, c => {
+    row(`Total throughput at ${state.tib} TiB`, c => {
       if (c.none || !c.pf) return na;
       if (!c.pf.mbps) return "not published";
       return `${num(c.pf.mbps)} ${c.pf.unit}` + (c.pf.wMbps ? ` read · ${num(c.pf.wMbps)} write` : "") +
         (c.pf.fixed ? mark(`${c.o.name}: throughput comes from the mount target, so it is the same at any capacity.`) : "");
     }, { strong: true });
-    row("Ceiling", c => {
-      if (c.none || !c.t) return na;
-      const bits = [];
-      if (c.t.capIops) bits.push(`${num(c.t.capIops)} IOPS`);
-      if (c.t.capMbps) bits.push(`${num(c.t.capMbps)} ${c.t.mib ? "MiB/s" : "MB/s"}`);
-      if (c.t.fixedMbps) return `${num(c.t.fixedMbps)} ${c.t.mib ? "MiB/s" : "MB/s"} ${c.o.capScope}`;
-      return bits.length ? `${bits.join(" · ")} ${c.o.capScope}` : "No published per-unit ceiling";
-    });
     row(`Performance of a ${SLICE} GiB volume`, c => {
       if (c.none || !c.slice) return na;
       if (c.slice.fixed) return `${num(c.slice.mbps)} ${c.slice.unit} — same as at ${state.tib} TiB`;
