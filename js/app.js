@@ -4,6 +4,7 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const usd = (n, dp) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: dp ?? (n < 1000 ? 2 : 0), maximumFractionDigits: dp ?? (n < 1000 ? 2 : 0) });
   const num = n => Math.round(n).toLocaleString("en-US");
+  const mb = n => Math.floor(n).toLocaleString("en-US");   // throughput, rounded down like the OCI estimator
   const short = n => Math.abs(n) >= 1e6 ? "$" + (n / 1e6).toFixed(2) + "M" : "$" + Math.round(n / 1000) + "K";
   const U = D.unitsPerTiB, SLICE = D.sliceGiB;
 
@@ -42,7 +43,7 @@
     if (!o || !t) return null;
     const unit = t.mib ? "MiB/s" : "MB/s";
     if (t.fixedMbps) return { mbps: t.fixedMbps, unit, fixed: true, units: 1 };
-    let units = unitsWanted || bestUnits(o, t, tib);
+    let units = unitsWanted || minUnits(o, tib);
     units = Math.max(units, minUnits(o, tib));
     if (o.maxUnits) units = Math.min(units, o.maxUnits);
     const perUnitTiB = tib / units;
@@ -76,7 +77,7 @@
     if (t.fixedMbps) return `${num(t.fixedMbps)} ${t.mib ? "MiB/s" : "MB/s"} ${o.capScope}`;
     const bits = [];
     if (t.capIops) bits.push(`${num(t.capIops)} IOPS`);
-    if (t.capMbps) bits.push(`${num(t.capMbps)} ${t.mib ? "MiB/s" : "MB/s"}`);
+    if (t.capMbps) bits.push(`${mb(t.capMbps)} ${t.mib ? "MiB/s" : "MB/s"}`);
     return bits.length ? `${bits.join(" · ")} max ${o.capScope}` : "No published per-unit maximum";
   }
   // "32 volumes × 25,000 IOPS each = 800,000 IOPS in total"
@@ -85,8 +86,10 @@
     if (p.fixed) return "same at any capacity";
     if (!p.iops && !p.mbps) return "throughput-based QoS";
     const label = (o.unitLabel || "volume") + (p.units > 1 ? "s" : "");
-    if (p.iops) return `${p.units} ${label} × ${num(p.perUnitIops)} IOPS each = ${num(p.iops)} IOPS in total`;
-    return `${p.units} ${label} × ${num(p.perUnitMbps)} ${p.unit} each = ${num(p.mbps)} ${p.unit} in total`;
+    if (p.iops) return p.units > 1
+      ? `${p.units} ${label} × ${num(p.perUnitIops)} IOPS each = ${num(p.iops)} IOPS in total`
+      : `1 ${label} at ${num(p.iops)} IOPS`;
+    return `${p.units} ${label} × ${mb(p.perUnitMbps)} ${p.unit} each = ${mb(p.mbps)} ${p.unit} in total`;
   }
   const cap1 = s => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -118,7 +121,7 @@
           </div>
           ${pf && !pf.fixed && o.unitMaxTiB ? `<label>${esc(cap1(o.unitLabel || "volume"))}s the capacity is split into
             <input type="number" data-k="units" min="${minUnits(o, state.tib)}" max="${o.maxUnits || 999}" value="${pf.units}">
-            <span class="hint">${pf.units} × ${pf.perUnitTiB.toFixed(pf.perUnitTiB < 10 ? 2 : 1)} TiB${o.maxUnits ? ` · max ${o.maxUnits}` : ""}</span></label>` : ""}
+            <span class="hint">${pf.units} × ${pf.perUnitTiB.toFixed(pf.perUnitTiB < 10 ? 2 : 1)} TiB each${bestUnits(o, t, state.tib) > pf.units ? ` · up to ${bestUnits(o, t, state.tib)} adds more total IOPS` : ""}</span></label>` : ""}
           <div class="foot-row">
             <div class="perf">${esc(perUnitText(o, t))}<span>${esc(totalText(o, pf))}</span></div>
             <div class="rate">${o.priceOnRequest ? "on request" : usd(cost, 0)}<span>per month</span></div>
@@ -162,27 +165,29 @@
 
     sec("PERFORMANCE");
     row("How performance scales", c => c.none ? na : c.o.scaling);
-    row("IOPS per TiB", c => {
+    row("IOPS rate (before the per-volume limit)", c => {
       if (c.none) return na;
       if (!c.t) return "not published";
       if (c.t.fixedMbps) return "n/a — fixed per mount target";
       if (!c.t.iopsPerTiB) return "not published";
-      return num(c.t.iopsPerTiB) + (c.t.writeIopsPerTiB ? ` read · ${num(c.t.writeIopsPerTiB)} write` : "");
+      const perGB = c.t.iopsPerGB ? `${num(c.t.iopsPerGB)} per GB · ` : "";
+      return perGB + `${num(c.t.iopsPerTiB)} per TiB` + (c.t.writeIopsPerTiB ? ` read · ${num(c.t.writeIopsPerTiB)} write` : "");
     });
-    row("Throughput per TiB", c => {
+    row("Throughput rate (before the per-volume limit)", c => {
       if (c.none) return na;
       if (!c.t) return "not published";
       if (c.t.fixedMbps) return "n/a — fixed per mount target";
       if (!c.t.mbpsPerTiB) return "not published";
       const u = c.t.mib ? "MiB/s" : "MB/s";
-      return `${num(c.t.mbpsPerTiB)} ${u}` + (c.t.writeMbpsPerTiB ? ` read · ${num(c.t.writeMbpsPerTiB)} write` : "");
+      const perGB = c.t.kbpsPerGB ? `${num(c.t.kbpsPerGB)} KB/s per GB · ` : "";
+      return perGB + `${mb(c.t.mbpsPerTiB)} ${u} per TiB` + (c.t.writeMbpsPerTiB ? ` read · ${mb(c.t.writeMbpsPerTiB)} write` : "");
     });
     row("Maximum for one volume / instance", c => {
       if (c.none || !c.t) return na;
-      if (c.t.fixedMbps) return `${num(c.t.fixedMbps)} ${c.t.mib ? "MiB/s" : "MB/s"} ${c.o.capScope}`;
+      if (c.t.fixedMbps) return `${mb(c.t.fixedMbps)} ${c.t.mib ? "MiB/s" : "MB/s"} ${c.o.capScope}`;
       const bits = [];
       if (c.t.capIops) bits.push(`${num(c.t.capIops)} IOPS`);
-      if (c.t.capMbps) bits.push(`${num(c.t.capMbps)} ${c.t.mib ? "MiB/s" : "MB/s"}`);
+      if (c.t.capMbps) bits.push(`${mb(c.t.capMbps)} ${c.t.mib ? "MiB/s" : "MB/s"}`);
       return bits.length ? `${bits.join(" · ")} ${c.o.capScope}` : "Not published";
     });
     row("Capacity limit for one volume / instance", c => {
@@ -193,9 +198,10 @@
       if (c.none || !c.pf) return na;
       const n = c.pf.units, label = (c.o.unitLabel || "volume") + (n > 1 ? "s" : "");
       if (c.pf.fixed) return "1 mount target";
-      return `${n} ${label} × ${(c.pf.perUnitTiB).toFixed(c.pf.perUnitTiB < 10 ? 2 : 1)} TiB each`;
+      return n > 1 ? `${n} ${label} × ${(c.pf.perUnitTiB).toFixed(c.pf.perUnitTiB < 10 ? 2 : 1)} TiB each`
+                   : `1 ${label} of ${(c.pf.perUnitTiB).toFixed(c.pf.perUnitTiB < 10 ? 2 : 1)} TiB`;
     });
-    row("IOPS each one gets", c => {
+    row("IOPS per volume / instance", c => {
       if (c.none || !c.pf || c.pf.fixed) return na;
       if (!c.pf.perUnitIops) return "not published";
       return num(c.pf.perUnitIops) + (c.pf.atUnitMax ? ` (at the ${num(c.t.capIops)} maximum)` : ` (below the ${num(c.t.capIops)} maximum)`);
@@ -211,16 +217,16 @@
     row(`Total throughput at ${state.tib} TiB`, c => {
       if (c.none || !c.pf) return na;
       if (!c.pf.mbps) return "not published";
-      return (c.pf.fixed ? `${num(c.pf.mbps)} ${c.pf.unit}` : `${c.pf.units} × ${num(c.pf.perUnitMbps)} = ${num(c.pf.mbps)} ${c.pf.unit}`) +
-        (c.pf.wMbps ? ` read · ${num(c.pf.wMbps)} write` : "") +
+      return (c.pf.fixed ? `${mb(c.pf.mbps)} ${c.pf.unit}` : `${c.pf.units} × ${mb(c.pf.perUnitMbps)} = ${mb(c.pf.mbps)} ${c.pf.unit}`) +
+        (c.pf.wMbps ? ` read · ${mb(c.pf.wMbps)} write` : "") +
         (c.pf.fixed ? mark(`${c.o.name}: throughput comes from the mount target, so it is the same at any capacity.`) : "");
     }, { strong: true });
-    row(`Performance of a ${SLICE} GiB volume`, c => {
+    row(`One ${SLICE} GB volume on its own`, c => {
       if (c.none || !c.slice) return na;
-      if (c.slice.fixed) return `${num(c.slice.mbps)} ${c.slice.unit} — same as at ${state.tib} TiB`;
+      if (c.slice.fixed) return `${mb(c.slice.mbps)} ${c.slice.unit} — same as at ${state.tib} TiB`;
       const bits = [];
       if (c.slice.iops) bits.push(`${num(c.slice.iops)} IOPS`);
-      if (c.slice.mbps) bits.push(`${num(c.slice.mbps)} ${c.slice.unit}`);
+      if (c.slice.mbps) bits.push(`${mb(c.slice.mbps)} ${c.slice.unit}`);
       return bits.length ? bits.join(" · ") : "not published";
     });
 

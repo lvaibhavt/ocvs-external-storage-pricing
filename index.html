@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OCVS External Storage Pricing</title>
 <meta name="description" content="Compare external datastore options (block and file) for OCVS, AVS, GCVE and Amazon EVS side by side: media, protocol, IOPS, throughput and list price.">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 <header class="top">
@@ -50,7 +50,7 @@
     <ul>
       <li><b>A datastore is built from several volumes, and each volume has its own IOPS limit.</b> The total is simply those limits added up:
         <br><b>number of volumes × IOPS each volume gets = total IOPS</b>.
-        <br>Example, 100 TiB of OCI Block Volume at Balanced: split into <b>32 volumes of 3.13 TiB</b>, each capped at <b>25,000 IOPS</b>, giving <b>32 × 25,000 = 800,000 IOPS</b>. Split the same 100 TiB into only <b>4 volumes of 25 TiB</b> and you get <b>4 × 25,000 = 100,000 IOPS</b> — same capacity, same price, a quarter of the performance. Use the <b>volumes</b> box on each card to try both.</li>
+        <br>Example, 100 TiB of OCI Block Volume at Balanced: split into <b>32 volumes of 3.13 TiB</b>, each capped at <b>25,000 IOPS</b>, giving <b>32 × 25,000 = 800,000 IOPS</b>. The tool starts with the <b>fewest volumes</b> the capacity needs — for 100 TiB that is <b>4 volumes of 25 TiB</b>, giving <b>4 × 25,000 = 100,000 IOPS</b>. Raise the <b>volumes</b> box on the card to 32 and the same 100 TiB, at the same price, gives <b>32 × 25,000 = 800,000 IOPS</b>.</li>
       <li><b>The big figure on each card</b> is the maximum for <i>one</i> volume, file system or mount target — the same number the provider's calculator shows (OCI Balanced: 25,000 IOPS). The line under it shows the sum.</li>
       <li><b>IOPS / throughput per TiB</b> — the published rate, e.g. OCI Balanced = 60 IOPS per GB (61,440 per TiB), Elastic SAN = 5,000 IOPS per TiB. A volume gets this rate until it hits its maximum.</li>
       <li><b>Capacity limit for one volume / instance</b> — how big one volume can be: 32 TiB for OCI Block Volume, 64 TiB for an Elastic SAN volume, 192 TiB for an FSx file system. This sets the <i>fewest</i> volumes you can use.</li>
@@ -70,7 +70,7 @@
   </section>
 </main>
 
-<script src="data/storage.js"></script>
-<script src="js/app.js"></script>
+<script src="data/storage.js?v=3"></script>
+<script src="js/app.js?v=3"></script>
 </body>
 </html>

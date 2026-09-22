@@ -45,13 +45,14 @@ window.STORAGE = {
       unitMaxTiB: 32, maxUnits: 32,
       minSize: "50 GB", maxSize: "32 TB per volume · 32 volumes per SDDC",
       tiers: [
-        { id: "0", label: "Lower Cost (0 VPU)", price: 0.0255, iopsPerTiB: 2048, mbpsPerTiB: 245.76, capIops: 3000, capMbps: 480 },
-        { id: "10", label: "Balanced (10 VPU)", price: 0.0425, iopsPerTiB: 61440, mbpsPerTiB: 491.52, capIops: 25000, capMbps: 480, default: true },
-        { id: "20", label: "Higher Performance (20 VPU)", price: 0.0595, iopsPerTiB: 76800, mbpsPerTiB: 614.4, capIops: 50000, capMbps: 680 },
-        { id: "30", label: "Ultra High (30 VPU)", price: 0.0765, iopsPerTiB: 92160, mbpsPerTiB: 737.28, capIops: 75000, capMbps: 880 }
+        { id: "0", label: "Lower Cost (0 VPU)", price: 0.0255, iopsPerGB: 2, kbpsPerGB: 240, iopsPerTiB: 2048, mbpsPerTiB: 240, capIops: 3000, capMbps: 480 },
+        { id: "10", label: "Balanced (10 VPU)", price: 0.0425, iopsPerGB: 60, kbpsPerGB: 480, iopsPerTiB: 61440, mbpsPerTiB: 480, capIops: 25000, capMbps: 480, default: true },
+        { id: "20", label: "Higher Performance (20 VPU)", price: 0.0595, iopsPerGB: 75, kbpsPerGB: 600, iopsPerTiB: 76800, mbpsPerTiB: 600, capIops: 50000, capMbps: 680 },
+        { id: "30", label: "Ultra High (30 VPU)", price: 0.0765, iopsPerGB: 90, kbpsPerGB: 720, iopsPerTiB: 92160, mbpsPerTiB: 720, capIops: 75000, capMbps: 880 }
       ],
       notes: [
-        "Balanced gives 60 IOPS and 480 KB/s per GB, so a 100 GB volume gets 6,000 IOPS — performance follows each volume, not the datastore.",
+        "Balanced gives 60 IOPS and 480 KB/s per GB, so a 100 GB volume gets 6,000 IOPS and 46 MB/s, exactly as the OCI cost estimator shows.",
+        "Oracle quotes KB/s in binary units, so 480 KB/s per GB is 480 MB/s for a 1 TiB volume — which is also that volume's maximum.",
         "Each volume stops at its maximum (25,000 IOPS at Balanced, 75,000 at Ultra High), so large datastores are built from several volumes and their performance adds up — this is what the OCI cost estimator shows as \"Max IOPS\".",
         "The performance level can be changed online, with no downtime."
       ],
