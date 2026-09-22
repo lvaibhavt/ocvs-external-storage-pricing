@@ -9,17 +9,34 @@
 
   // A datastore is one volume (or one file system / instance), grown in whole TiB.
   // Only when the capacity is bigger than one volume can be does it use more.
+  const RG = window.STORAGE_REGIONS;
   const DEFAULTS = { kind: "block", tib: 20, hours: D.defaultHours };
-  let state = { ...DEFAULTS, sel: {}, tier: {} };
+  const fresh = () => ({ ...DEFAULTS, sel: {}, tier: {}, region: { ...RG.defaults } });
+  let state = fresh();
 
-  const optsFor = (pid, kind) => D.options.filter(o => o.platform === pid && o.kind === kind);
+  const regionsOf = pid => RG.platforms[pid];
+  const regionOf = pid => regionsOf(pid).find(r => r.id === state.region[pid]) || regionsOf(pid)[0];
+  const allOpts = (pid, kind) => D.options.filter(o => o.platform === pid && o.kind === kind);
+  const availIn = (pid, o) => (regionOf(pid).avail || {})[o.id];
+  const optsFor = (pid, kind) => allOpts(pid, kind).filter(o => availIn(pid, o));
   function chosen(pid) {
     const list = optsFor(pid, state.kind);
     return list.length ? (list.find(o => o.id === state.sel[pid]) || list[0]) : null;
   }
+  // Tier with this region's price applied (the data file holds Frankfurt prices).
   function tierOf(o) {
     if (!o || !o.tiers) return null;
-    return o.tiers.find(t => t.id === state.tier[o.id]) || o.tiers.find(t => t.default) || o.tiers[0];
+    const avail = availIn(o.platform, o) || {};
+    const list = o.tiers.filter(t => !(t.id in avail) || avail[t.id] != null);
+    const t = list.find(t => t.id === state.tier[o.id]) || list.find(t => t.default) || list[0];
+    if (!t) return null;
+    const p = avail[t.id];
+    if (p == null) return t;
+    return t.priceHr != null ? { ...t, priceHr: p } : { ...t, price: p };
+  }
+  function tiersIn(o) {
+    const avail = availIn(o.platform, o) || {};
+    return o.tiers.filter(t => !(t.id in avail) || avail[t.id] != null);
   }
   const unitRate = t => (t ? (t.priceHr != null ? t.priceHr * state.hours : t.price) : null);
   const monthly = (o, t) => (o && t && !o.priceOnRequest ? unitRate(t) * state.tib * U : null);
@@ -71,23 +88,28 @@
   // ---------- picker cards ----------
   function renderPickers() {
     $("#pickers").innerHTML = D.order.map(pid => {
-      const p = D.platforms[pid], list = optsFor(pid, state.kind);
+      const p = D.platforms[pid], list = optsFor(pid, state.kind), reg = regionOf(pid);
+      const regionSel = `<label>Region (${regionsOf(pid).length} with ${esc(p.name)})
+          <select data-k="region">${regionsOf(pid).map(r => `<option value="${esc(r.id)}" ${r.id === reg.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select></label>`;
       if (!list.length) {
-        return `<div class="card pv off"><div class="pv-head"><span class="dot" style="background:${p.accent}"></span>
-            <div><div class="pv-name">${esc(p.name)}</div><div class="pv-sub">${esc(p.regionName)}</div></div></div>
-          <div class="pv-body"><div class="nosupport"><b>No ${esc(state.kind)} option</b>
-            <span>${esc((D.gaps[state.kind] || {})[pid] || "")}</span></div></div></div>`;
+        const gap = (D.gaps[state.kind] || {})[pid];
+        const missing = allOpts(pid, state.kind).map(o => o.name).join(" or ");
+        return `<div class="card pv off" data-pid="${pid}"><div class="pv-head"><span class="dot" style="background:${p.accent}"></span>
+            <div><div class="pv-name">${esc(p.name)}</div><div class="pv-sub">${esc(p.longName)}</div></div></div>
+          <div class="pv-body">${regionSel}<div class="nosupport"><b>No ${esc(state.kind)} option${gap ? "" : " in this region"}</b>
+            <span>${esc(gap || `${missing} is not available as a datastore in ${reg.name}.`)}</span></div></div></div>`;
       }
       const o = chosen(pid), t = tierOf(o), pf = perf(o, t, state.tib), cost = monthly(o, t);
       return `<div class="card pv${p.baseline ? " base" : ""}${o.partner ? " partner" : ""}" data-pid="${pid}">
         <div class="pv-head"><span class="dot" style="background:${p.accent}"></span>
           <div><div class="pv-name">${esc(p.name)}${p.baseline ? '<span class="tag">BASELINE</span>' : ""}</div>
-            <div class="pv-sub">${esc(p.regionName)}</div></div></div>
+            <div class="pv-sub">${esc(p.longName)}</div></div></div>
         <div class="pv-body">
+          ${regionSel}
           <label>Service
             <select data-k="opt">${list.map(x => `<option value="${x.id}" ${x === o ? "selected" : ""}>${esc(x.name)}${x.partner ? " (partner)" : ""}</option>`).join("")}</select></label>
           ${o.tiers ? `<label>Performance level
-            <select data-k="tier">${o.tiers.map(x => `<option value="${x.id}" ${x === t ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select>
+            <select data-k="tier">${tiersIn(o).map(x => `<option value="${x.id}" ${t && x.id === t.id ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select>
             ${t && t.desc ? `<span class="tier-desc">${esc(t.desc)}</span>` : ""}</label>`
             : `<div class="chip warn">No published tiers</div>`}
           <div class="chips">
@@ -107,9 +129,9 @@
   function renderTable() {
     const cols = D.order.map(pid => {
       const o = chosen(pid);
-      if (!o) return { pid, none: true, platform: D.platforms[pid] };
+      if (!o) return { pid, none: true, platform: D.platforms[pid], region: regionOf(pid) };
       const t = tierOf(o);
-      return { pid, platform: D.platforms[pid], o, t, cost: monthly(o, t), pf: perf(o, t, state.tib) };
+      return { pid, platform: D.platforms[pid], region: regionOf(pid), o, t, cost: monthly(o, t), pf: perf(o, t, state.tib) };
     });
     const base = cols[0];
     const notes = [];
@@ -124,8 +146,8 @@
     const por = c => c.o.priceOnRequest;
 
     sec("CONFIGURATION");
-    row("Region", c => c.none ? na : c.platform.regionName);
-    row("Service", c => c.none ? "Not supported" : c.o.name);
+    row("Region", c => c.region.name);
+    row("Service", c => c.none ? ((D.gaps[state.kind] || {})[c.pid] ? "Not supported" : "Not available in this region") : c.o.name);
     row("Performance level", c => c.none ? na : (c.t ? c.t.label : "n/a"));
     row("What this level means", c => c.none ? na : (c.t && c.t.desc ? c.t.desc : (c.o.priceOnRequest ? "Partner product — sizing and performance set with the vendor" : "—")), { desc: true });
     row("Ownership", c => c.none ? na : c.o.ownership);
@@ -188,7 +210,7 @@
     for (const r of rows) {
       if (r.section) { h += `<tr class="sec"><td colspan="${cols.length + 1}">${esc(r.section)}</td></tr>`; continue; }
       h += `<tr class="${r.strong ? "strong" : ""} ${r.savings ? "savings" : ""} ${r.desc ? "desc" : ""}"><th>${esc(r.label)}</th>${r.cells.map((cell, i) =>
-        `<td class="${i === 0 ? "base" : ""} ${String(cell).startsWith("−") ? "neg" : ""} ${cell === "Not supported" ? "na" : ""}">${esc(cell)}</td>`).join("")}</tr>`;
+        `<td class="${i === 0 ? "base" : ""} ${String(cell).startsWith("−") ? "neg" : ""} ${/^Not (supported|available)/.test(cell) ? "na" : ""}">${esc(cell)}</td>`).join("")}</tr>`;
     }
     $("#result").innerHTML = h + "</tbody>";
     $("#callouts").innerHTML = callouts.map(c =>
@@ -199,7 +221,7 @@
     $("#svc-notes").innerHTML = cols.filter(c => !c.none).map(c =>
       `<details><summary>${esc(c.platform.name)} — ${esc(c.o.name)}</summary><ul>${c.o.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>
         <p class="links">${c.o.links.map(([l, href]) => `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(l)}</a>`).join(" · ")}</p></details>`).join("");
-    $("#head-sub").textContent = `${state.tib} TiB datastore · ${state.kind === "block" ? "block (iSCSI)" : "file (NFS)"} · Frankfurt · list prices as of ${D.asOf}`;
+    $("#head-sub").textContent = `${state.tib} TiB datastore · ${state.kind === "block" ? "block (iSCSI)" : "file (NFS)"} · list prices as of ${D.asOf}`;
   }
 
   function update() {
@@ -212,7 +234,7 @@
   document.addEventListener("click", e => {
     const seg = e.target.closest(".seg button");
     if (seg) { state.kind = seg.dataset.v; return update(); }
-    if (e.target.closest("#reset")) { state = { ...DEFAULTS, sel: {}, tier: {} }; return update(); }
+    if (e.target.closest("#reset")) { state = fresh(); return update(); }
   });
   document.addEventListener("change", e => {
     const el = e.target;
@@ -221,8 +243,9 @@
     const card = el.closest("[data-pid]");
     if (!card) return;
     const pid = card.dataset.pid;
+    if (el.dataset.k === "region") state.region[pid] = el.value;
     if (el.dataset.k === "opt") state.sel[pid] = el.value;
-    if (el.dataset.k === "tier") state.tier[chosen(pid).id] = el.value;
+    if (el.dataset.k === "tier" && chosen(pid)) state.tier[chosen(pid).id] = el.value;
     update();
   });
 

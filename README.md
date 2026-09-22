@@ -28,9 +28,29 @@ For more on OCI storage performance with OCVS, see Oracle's articles:
 
 \* Partner products with no public price. They're listed with **price on request** and links for getting a quote.
 
+## Regions
+
+Each platform has a region dropdown listing **only the regions where that VMware service runs**, and a storage option appears only where it is supported as a datastore for that service. Frankfurt is the default everywhere.
+
+| Platform | VMware regions | Block option | File option |
+|---|---|---|---|
+| **OCVS** | 44 | OCI Block Volume — **all 44** | OCI File Storage — **all 44** |
+| **AVS** | 43 | Elastic SAN — 36 of 43 | Azure NetApp Files — 35 of 43 (Microsoft's supported list) |
+| **GCVE** | 21 | none | Filestore — 19 of 21 · NetApp Volumes — 11 of 21 |
+| **Amazon EVS** | 26 | FSx for ONTAP — **all 26** | FSx for ONTAP — **all 26** |
+
+Gaps (VMware service available, storage option not):
+- **AVS, no Elastic SAN:** Belgium Central, Chile Central, Indonesia Central, Israel Central, Malaysia West, New Zealand North, Qatar Central
+- **AVS, no Azure NetApp Files datastores:** Belgium Central, Chile Central, Indonesia Central, Israel Central, New Zealand North, Poland Central, South India, West Central US
+- **GCVE, no Filestore:** Melbourne, Toronto
+- **GCVE, no NetApp Volumes (Standard/Premium/Extreme):** Dallas, Dammam, Doha, Melbourne, Mexico, Milan, Osaka, Paris, Santiago, Sao Paulo
+- Pure Storage options for AVS don't publish regional availability; confirm with Pure.
+
+Region data lives in [`data/regions.js`](data/regions.js).
+
 ## Assumptions
 
-- **Region:** Frankfurt for all four platforms. List prices, no discounts or commitments, collected 21 Sep 2026.
+- **Region:** chosen per platform (default Frankfurt). List prices, no discounts or commitments, collected 21-22 Sep 2026.
 - **Units:** 1 TiB = **1,024** capacity units, matching each provider's own calculator. OCI and AWS label the unit "GB", Azure and Google "GiB". Check: 1,024 GB OCI Block Volume at Balanced = 1,024 x $0.0425 = **$43.52/month**, the same as the OCI cost estimator.
 - **Capacity billed is provisioned capacity**, not post-deduplication.
 - **Hours per month:** default **730**. Azure NetApp Files, Google Cloud NetApp Volumes and Filestore are billed per unit-hour, so their monthly cost is rate x hours; set 744 for a 31-day month. OCI, Elastic SAN and FSx quote flat monthly rates, so hours don't affect them.

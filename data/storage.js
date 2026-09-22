@@ -63,7 +63,7 @@ window.STORAGE = {
       protocol: "iSCSI", datastore: "VMFS", media: "SSD", ownership: "Azure first-party", unit: "GiB",
       scaling: "Scales per SAN, from base capacity only", capScope: "per volume", unitLabel: "volume",
       unitMaxTiB: 64, serviceMaxIops: 2000000, serviceMaxMbps: 80000, serviceMaxBaseTiB: 400,
-      minSize: "1 TiB SAN", maxSize: "64 TiB per volume",
+      minSize: "16 TiB base capacity (AVS requirement)", maxSize: "64 TiB per volume",
       tiers: [
         { desc: "Base capacity = storage that also buys performance (5,000 IOPS and 200 MB/s per TiB). LRS keeps 3 copies inside one datacenter.", id: "lrs", label: "Premium LRS — base capacity", price: 0.095, iopsPerTiB: 5000, mbpsPerTiB: 200, capIops: 80000, capMbps: 1280, default: true },
         { desc: "Additional capacity = storage only, no extra performance, 25% cheaper. Used to add space once base capacity gives enough IOPS. LRS: 3 copies in one datacenter.", id: "lrs-add", label: "Premium LRS — additional capacity", price: 0.07125, iopsPerTiB: 0, mbpsPerTiB: 0, capIops: 0, capMbps: 0 },
@@ -73,7 +73,7 @@ window.STORAGE = {
       notes: [
         "Only base capacity adds performance: 5,000 IOPS and 200 MB/s per TiB. Additional capacity adds none and costs 25% less.",
         "SAN performance is shared across all volumes; one volume tops out at 80,000 IOPS / 1,280 MB/s.",
-        "Minimum SAN size is 1 TiB."
+        "For AVS, Microsoft requires an Elastic SAN with at least 16 TiB of base capacity, in the same region and availability zone as the private cloud."
       ],
       links: [["AVS + Elastic SAN", "https://learn.microsoft.com/en-us/azure/azure-vmware/configure-azure-elastic-san"],
               ["Scale targets", "https://learn.microsoft.com/en-us/azure/storage/elastic-san/elastic-san-scale-targets"],
@@ -88,7 +88,8 @@ window.STORAGE = {
       notes: [
         "Partner product: Pure handles onboarding and support, and it runs in your own Azure subscription.",
         "Cost = Pure licence (direct or an Azure Marketplace private offer) + the Azure VMs and disks it runs on.",
-        "Pure normally quotes effective TiB after data reduction, unlike first-party services that bill provisioned capacity."
+        "Pure normally quotes effective TiB after data reduction, unlike first-party services that bill provisioned capacity.",
+        "Regional availability is confirmed by Pure Storage; it is not published per region."
       ],
       links: [["Configure Pure Cloud Block Store (AVS)", "https://learn.microsoft.com/en-us/azure/azure-vmware/configure-pure-cloud-block-store"],
               ["Get a quote from Pure Storage", "https://www.purestorage.com/company/contact-us.html"]]
@@ -102,7 +103,8 @@ window.STORAGE = {
       notes: [
         "Sold through the Azure Marketplace, so it is not in the Azure pricing calculator.",
         "Azure portal → Marketplace → search \"Everpure Cloud\". Some plans show a price, others are private offers.",
-        "Uses VAAI offload with AVS."
+        "Uses VAAI offload with AVS.",
+        "Regional availability depends on the Marketplace plan; confirm with Pure Storage."
       ],
       links: [["Azure Native Pure Storage Cloud (AVS)", "https://learn.microsoft.com/en-us/azure/azure-vmware/configure-azure-native-pure-storage-cloud"],
               ["What is Everpure Cloud Azure Native?", "https://learn.microsoft.com/en-us/azure/partner-solutions/pure-storage/overview"]]
