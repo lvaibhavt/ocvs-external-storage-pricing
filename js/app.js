@@ -165,22 +165,28 @@
 
     sec("PERFORMANCE");
     row("How performance scales", c => c.none ? na : c.o.scaling);
-    row("IOPS rate (before the per-volume limit)", c => {
+    row("IOPS rate, and where it stops", c => {
       if (c.none) return na;
       if (!c.t) return "not published";
       if (c.t.fixedMbps) return "n/a — fixed per mount target";
       if (!c.t.iopsPerTiB) return "not published";
-      const perGB = c.t.iopsPerGB ? `${num(c.t.iopsPerGB)} per GB · ` : "";
-      return perGB + `${num(c.t.iopsPerTiB)} per TiB` + (c.t.writeIopsPerTiB ? ` read · ${num(c.t.writeIopsPerTiB)} write` : "");
+      const rate = c.t.iopsPerGB ? `${num(c.t.iopsPerGB)} IOPS per GB` : `${num(c.t.iopsPerTiB)} IOPS per TiB`;
+      if (!c.t.capIops) return rate + (c.t.writeIopsPerTiB ? ` read · ${num(c.t.writeIopsPerTiB)} write per TiB` : "");
+      const atTiB = c.t.capIops / c.t.iopsPerTiB;
+      const at = atTiB < 1 ? `${num(atTiB * 1024)} GB` : `${atTiB.toFixed(atTiB < 10 ? 1 : 0)} TiB`;
+      return `${rate}, until the volume reaches ${at} — bigger volumes stay at ${num(c.t.capIops)}`;
     });
-    row("Throughput rate (before the per-volume limit)", c => {
+    row("Throughput rate, and where it stops", c => {
       if (c.none) return na;
       if (!c.t) return "not published";
       if (c.t.fixedMbps) return "n/a — fixed per mount target";
       if (!c.t.mbpsPerTiB) return "not published";
       const u = c.t.mib ? "MiB/s" : "MB/s";
-      const perGB = c.t.kbpsPerGB ? `${num(c.t.kbpsPerGB)} KB/s per GB · ` : "";
-      return perGB + `${mb(c.t.mbpsPerTiB)} ${u} per TiB` + (c.t.writeMbpsPerTiB ? ` read · ${mb(c.t.writeMbpsPerTiB)} write` : "");
+      const rate = c.t.kbpsPerGB ? `${num(c.t.kbpsPerGB)} KB/s per GB` : `${mb(c.t.mbpsPerTiB)} ${u} per TiB`;
+      if (!c.t.capMbps) return rate + (c.t.writeMbpsPerTiB ? ` read · ${mb(c.t.writeMbpsPerTiB)} write per TiB` : "");
+      const atTiB = c.t.capMbps / c.t.mbpsPerTiB;
+      const at = atTiB < 1 ? `${num(atTiB * 1024)} GB` : `${atTiB.toFixed(atTiB < 10 ? 1 : 0)} TiB`;
+      return `${rate}, until the volume reaches ${at} — bigger volumes stay at ${mb(c.t.capMbps)} ${u}`;
     });
     row("Maximum for one volume / instance", c => {
       if (c.none || !c.t) return na;

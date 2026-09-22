@@ -17,6 +17,8 @@ A datastore is built from several volumes, and each volume has its own IOPS limi
 | Fewest volumes, the default (32 TiB is the per-volume limit) | 4 x 25 TiB | 25,000 | **100,000** | $4,352/mo |
 | Most volumes (32 per SDDC) | 32 x 3.13 TiB | 25,000 | **800,000** | $4,352/mo |
 
+A volume only earns performance with size until it hits its maximum: OCI Balanced earns 60 IOPS per GB and reaches 25,000 at **417 GB**, so a 1 TiB volume and a 32 TiB volume both deliver 25,000. Elastic SAN reaches its 80,000 at 16 TiB, FSx its 200,000 at 65 TiB.
+
 Throughput follows Oracle's binary convention: 480 KB/s per GB means a 100 GB volume gets **46 MB/s** (480 x 100 / 1024) and a 1 TiB volume gets **480 MB/s**, its maximum - the same figures the OCI cost estimator shows.
 
 That 25,000 per volume is the "Max IOPS" figure shown in the OCI cost estimator.
