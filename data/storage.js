@@ -44,10 +44,10 @@ window.STORAGE = {
       unitMaxTiB: 32, maxUnits: 32,
       minSize: "50 GB", maxSize: "32 TB per volume",
       tiers: [
-        { id: "0", label: "Lower Cost (0 VPU)", price: 0.0255, iopsPerGB: 2, kbpsPerGB: 240, iopsPerTiB: 2048, mbpsPerTiB: 240, capIops: 3000, capMbps: 480 },
-        { id: "10", label: "Balanced (10 VPU)", price: 0.0425, iopsPerGB: 60, kbpsPerGB: 480, iopsPerTiB: 61440, mbpsPerTiB: 480, capIops: 25000, capMbps: 480, default: true },
-        { id: "20", label: "Higher Performance (20 VPU)", price: 0.0595, iopsPerGB: 75, kbpsPerGB: 600, iopsPerTiB: 76800, mbpsPerTiB: 600, capIops: 50000, capMbps: 680 },
-        { id: "30", label: "Ultra High (30 VPU)", price: 0.0765, iopsPerGB: 90, kbpsPerGB: 720, iopsPerTiB: 92160, mbpsPerTiB: 720, capIops: 75000, capMbps: 880 }
+        { desc: "Cheapest level. Suited to backups, archives and large sequential reads, not to running VMs.", id: "0", label: "Lower Cost (0 VPU)", price: 0.0255, iopsPerGB: 2, kbpsPerGB: 240, iopsPerTiB: 2048, mbpsPerTiB: 240, capIops: 3000, capMbps: 480 },
+        { desc: "The default. Good for most VMware workloads — general-purpose VMs, app and web servers.", id: "10", label: "Balanced (10 VPU)", price: 0.0425, iopsPerGB: 60, kbpsPerGB: 480, iopsPerTiB: 61440, mbpsPerTiB: 480, capIops: 25000, capMbps: 480, default: true },
+        { desc: "For I/O-heavy workloads such as databases, doubling the per-volume maximum of Balanced.", id: "20", label: "Higher Performance (20 VPU)", price: 0.0595, iopsPerGB: 75, kbpsPerGB: 600, iopsPerTiB: 76800, mbpsPerTiB: 600, capIops: 50000, capMbps: 680 },
+        { desc: "For the most demanding, latency-sensitive workloads. OCI allows up to 120 VPU for even more.", id: "30", label: "Ultra High (30 VPU)", price: 0.0765, iopsPerGB: 90, kbpsPerGB: 720, iopsPerTiB: 92160, mbpsPerTiB: 720, capIops: 75000, capMbps: 880 }
       ],
       notes: [
         "Balanced: 60 IOPS and 480 KB/s per GB, up to 25,000 IOPS and 480 MB/s per volume — the same figures as the OCI cost estimator.",
@@ -65,9 +65,10 @@ window.STORAGE = {
       unitMaxTiB: 64, serviceMaxIops: 2000000, serviceMaxMbps: 80000, serviceMaxBaseTiB: 400,
       minSize: "1 TiB SAN", maxSize: "64 TiB per volume",
       tiers: [
-        { id: "lrs", label: "Premium LRS — base capacity", price: 0.095, iopsPerTiB: 5000, mbpsPerTiB: 200, capIops: 80000, capMbps: 1280, default: true },
-        { id: "lrs-add", label: "Premium LRS — additional capacity", price: 0.07125, iopsPerTiB: 0, mbpsPerTiB: 0, capIops: 0, capMbps: 0 },
-        { id: "zrs", label: "Premium ZRS — base capacity", price: 0.156, iopsPerTiB: 5000, mbpsPerTiB: 200, capIops: 80000, capMbps: 1280 }
+        { desc: "Base capacity = storage that also buys performance (5,000 IOPS and 200 MB/s per TiB). LRS keeps 3 copies inside one datacenter.", id: "lrs", label: "Premium LRS — base capacity", price: 0.095, iopsPerTiB: 5000, mbpsPerTiB: 200, capIops: 80000, capMbps: 1280, default: true },
+        { desc: "Additional capacity = storage only, no extra performance, 25% cheaper. Used to add space once base capacity gives enough IOPS. LRS: 3 copies in one datacenter.", id: "lrs-add", label: "Premium LRS — additional capacity", price: 0.07125, iopsPerTiB: 0, mbpsPerTiB: 0, capIops: 0, capMbps: 0 },
+        { desc: "Same as base capacity, but ZRS keeps 3 copies across 3 availability zones, so it survives a zone outage. Costs about 64% more than LRS.", id: "zrs", label: "Premium ZRS — base capacity", price: 0.156, iopsPerTiB: 5000, mbpsPerTiB: 200, capIops: 80000, capMbps: 1280 },
+        { desc: "ZRS storage-only capacity: 3 copies across 3 zones, no extra performance, cheaper than ZRS base.", id: "zrs-add", label: "Premium ZRS — additional capacity", price: 0.117, iopsPerTiB: 0, mbpsPerTiB: 0, capIops: 0, capMbps: 0 }
       ],
       notes: [
         "Only base capacity adds performance: 5,000 IOPS and 200 MB/s per TiB. Additional capacity adds none and costs 25% less.",
@@ -114,9 +115,9 @@ window.STORAGE = {
       unitMaxTiB: 192,
       minSize: "1,024 GiB SSD", maxSize: "192 TiB SSD per HA pair",
       tiers: [
-        { id: "single", label: "Single-AZ SSD", price: 0.149, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144, default: true },
-        { id: "multi", label: "Multi-AZ SSD", price: 0.298, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144 },
-        { id: "pool", label: "Capacity pool (cold tier)", price: 0.0233, iopsPerTiB: 0, mbpsPerTiB: 0, pool: true }
+        { desc: "File system and its standby both in one availability zone. The lower-cost choice.", id: "single", label: "Single-AZ SSD", price: 0.149, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144, default: true },
+        { desc: "Standby copy in a second availability zone, so it survives a zone outage. Twice the Single-AZ price.", id: "multi", label: "Multi-AZ SSD", price: 0.298, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144 },
+        { desc: "Low-cost cold tier. ONTAP moves rarely used data here automatically. Tens of milliseconds of latency, so not for active VMs.", id: "pool", label: "Capacity pool (cold tier)", price: 0.0233, iopsPerTiB: 0, mbpsPerTiB: 0, pool: true }
       ],
       notes: [
         "SSD defaults to 3,072 IOPS and 768 MB/s per TiB, both capped by the throughput capacity bought for the file system.",
@@ -137,10 +138,10 @@ window.STORAGE = {
       scaling: "Fixed per mount target — does not scale with capacity", capScope: "per mount target",
       minSize: "No minimum", maxSize: "8 EB per file system",
       tiers: [
-        { id: "std", label: "Standard mount target", price: 0.30, fixedMbps: 1250, default: true },
-        { id: "hpmt20", label: "HPMT-20 (20 Gbps)", price: 0.30, fixedMbps: 2500, extra: true },
-        { id: "hpmt40", label: "HPMT-40 (40 Gbps)", price: 0.30, fixedMbps: 5000, extra: true },
-        { id: "hpmt80", label: "HPMT-80 (80 Gbps)", price: 0.30, fixedMbps: 10000, extra: true }
+        { desc: "The normal way to mount OCI File Storage. Throughput comes from the mount target, not from how much you store.", id: "std", label: "Standard mount target", price: 0.30, fixedMbps: 1250, default: true },
+        { desc: "High Performance Mount Target: 20 Gbps for the file system. Extra monthly charge, 30-day commitment.", id: "hpmt20", label: "HPMT-20 (20 Gbps)", price: 0.30, fixedMbps: 2500, extra: true },
+        { desc: "High Performance Mount Target: 40 Gbps. Extra monthly charge, 30-day commitment.", id: "hpmt40", label: "HPMT-40 (40 Gbps)", price: 0.30, fixedMbps: 5000, extra: true },
+        { desc: "High Performance Mount Target: 80 Gbps. Extra monthly charge, 30-day commitment.", id: "hpmt80", label: "HPMT-80 (80 Gbps)", price: 0.30, fixedMbps: 10000, extra: true }
       ],
       notes: [
         "Performance comes from the mount target, not from provisioned capacity: a 100 GiB share and a 100 TiB share get the same throughput.",
@@ -160,10 +161,10 @@ window.STORAGE = {
       unitMaxTiB: 100,
       minSize: "1 TiB capacity pool", maxSize: "1 PiB pool · 100 TiB large volume",
       tiers: [
-        { id: "standard", label: "Standard", priceHr: 0.000202, mbpsPerTiB: 16, mib: true },
-        { id: "premium", label: "Premium", priceHr: 0.000403, mbpsPerTiB: 64, mib: true, default: true },
-        { id: "ultra", label: "Ultra", priceHr: 0.000538, mbpsPerTiB: 128, mib: true },
-        { id: "flexible", label: "Flexible (capacity only)", priceHr: 0.000196, mbpsPerTiB: 0, mib: true, extra: true }
+        { desc: "16 MiB/s per TiB. Lowest cost, for capacity-heavy, low-activity data.", id: "standard", label: "Standard", priceHr: 0.000202, mbpsPerTiB: 16, mib: true },
+        { desc: "64 MiB/s per TiB. The usual choice for general VMware datastores.", id: "premium", label: "Premium", priceHr: 0.000403, mbpsPerTiB: 64, mib: true, default: true },
+        { desc: "128 MiB/s per TiB. For throughput-hungry workloads.", id: "ultra", label: "Ultra", priceHr: 0.000538, mbpsPerTiB: 128, mib: true },
+        { desc: "Pay for capacity and throughput separately — useful for big but quiet datastores. Throughput (min 128 MiB/s) is extra.", id: "flexible", label: "Flexible (capacity only)", priceHr: 0.000196, mbpsPerTiB: 0, mib: true, extra: true }
       ],
       notes: [
         "Throughput follows the service level and the volume quota: 16 / 64 / 128 MiB/s per TiB for Standard / Premium / Ultra.",
@@ -181,9 +182,9 @@ window.STORAGE = {
       unitMaxTiB: 100,
       minSize: "1 TiB storage pool", maxSize: "Varies by service level",
       tiers: [
-        { id: "standard", label: "Standard", priceHr: 0.000315068, mbpsPerTiB: 16, mib: true },
-        { id: "premium", label: "Premium", priceHr: 0.000463425, mbpsPerTiB: 64, mib: true, default: true },
-        { id: "extreme", label: "Extreme", priceHr: 0.00061863, mbpsPerTiB: 128, mib: true }
+        { desc: "16 KiB/s per GiB (16 MiB/s per TiB). Lowest cost.", id: "standard", label: "Standard", priceHr: 0.000315068, mbpsPerTiB: 16, mib: true },
+        { desc: "64 KiB/s per GiB (64 MiB/s per TiB). The usual choice for VMware datastores.", id: "premium", label: "Premium", priceHr: 0.000463425, mbpsPerTiB: 64, mib: true, default: true },
+        { desc: "128 KiB/s per GiB (128 MiB/s per TiB). For the most throughput-hungry workloads.", id: "extreme", label: "Extreme", priceHr: 0.00061863, mbpsPerTiB: 128, mib: true }
       ],
       notes: [
         "Throughput scales with capacity: 16 / 64 / 128 KiB/s per GiB for Standard / Premium / Extreme.",
@@ -202,8 +203,8 @@ window.STORAGE = {
       unitMaxTiB: 100,
       minSize: "10 TiB to be VMware-certified", maxSize: "100 TiB per instance",
       tiers: [
-        { id: "zonal", label: "Zonal", priceHr: 0.000410959, iopsPerTiB: 9200, mbpsPerTiB: 260, mib: true, writeIopsPerTiB: 2600, writeMbpsPerTiB: 88, default: true },
-        { id: "regional", label: "Regional", priceHr: 0.000739726, iopsPerTiB: 9200, mbpsPerTiB: 260, mib: true, writeIopsPerTiB: 2600, writeMbpsPerTiB: 88 }
+        { desc: "Data kept in one zone. Lower cost; unavailable if that zone fails.", id: "zonal", label: "Zonal", priceHr: 0.000410959, iopsPerTiB: 9200, mbpsPerTiB: 260, mib: true, writeIopsPerTiB: 2600, writeMbpsPerTiB: 88, default: true },
+        { desc: "Data replicated across zones in the region, so it survives a zone outage. About 80% more than Zonal.", id: "regional", label: "Regional", priceHr: 0.000739726, iopsPerTiB: 9200, mbpsPerTiB: 260, mib: true, writeIopsPerTiB: 2600, writeMbpsPerTiB: 88 }
       ],
       notes: [
         "Performance scales with capacity: at 10 TiB, 92,000 read IOPS / 26,000 write IOPS and 2,600 MiB/s read / 880 MiB/s write.",
@@ -223,9 +224,9 @@ window.STORAGE = {
       unitMaxTiB: 192,
       minSize: "1,024 GiB SSD", maxSize: "192 TiB SSD per HA pair",
       tiers: [
-        { id: "single", label: "Single-AZ SSD", price: 0.149, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144, default: true },
-        { id: "multi", label: "Multi-AZ SSD", price: 0.298, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144 },
-        { id: "pool", label: "Capacity pool (cold tier)", price: 0.0233, iopsPerTiB: 0, mbpsPerTiB: 0, pool: true }
+        { desc: "File system and its standby both in one availability zone. The lower-cost choice.", id: "single", label: "Single-AZ SSD", price: 0.149, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144, default: true },
+        { desc: "Standby copy in a second availability zone, so it survives a zone outage. Twice the Single-AZ price.", id: "multi", label: "Multi-AZ SSD", price: 0.298, iopsPerTiB: 3072, mbpsPerTiB: 768, capIops: 200000, capMbps: 6144 },
+        { desc: "Low-cost cold tier. ONTAP moves rarely used data here automatically. Tens of milliseconds of latency, so not for active VMs.", id: "pool", label: "Capacity pool (cold tier)", price: 0.0233, iopsPerTiB: 0, mbpsPerTiB: 0, pool: true }
       ],
       notes: [
         "SSD defaults to 3,072 IOPS and 768 MB/s per TiB, both capped by the file system's throughput capacity.",

@@ -87,7 +87,8 @@
           <label>Service
             <select data-k="opt">${list.map(x => `<option value="${x.id}" ${x === o ? "selected" : ""}>${esc(x.name)}${x.partner ? " (partner)" : ""}</option>`).join("")}</select></label>
           ${o.tiers ? `<label>Performance level
-            <select data-k="tier">${o.tiers.map(x => `<option value="${x.id}" ${x === t ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label>`
+            <select data-k="tier">${o.tiers.map(x => `<option value="${x.id}" ${x === t ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select>
+            ${t && t.desc ? `<span class="tier-desc">${esc(t.desc)}</span>` : ""}</label>`
             : `<div class="chip warn">No published tiers</div>`}
           <div class="chips">
             <span class="chip">${esc(o.protocol)}</span>
@@ -126,6 +127,7 @@
     row("Region", c => c.none ? na : c.platform.regionName);
     row("Service", c => c.none ? "Not supported" : c.o.name);
     row("Performance level", c => c.none ? na : (c.t ? c.t.label : "n/a"));
+    row("What this level means", c => c.none ? na : (c.t && c.t.desc ? c.t.desc : (c.o.priceOnRequest ? "Partner product — sizing and performance set with the vendor" : "—")), { desc: true });
     row("Ownership", c => c.none ? na : c.o.ownership);
 
     sec("PROTOCOL & MEDIA");
@@ -185,7 +187,7 @@
       `<th class="${i === 0 ? "base" : ""}">${esc(c.platform.name)}</th>`).join("")}</tr></thead><tbody>`;
     for (const r of rows) {
       if (r.section) { h += `<tr class="sec"><td colspan="${cols.length + 1}">${esc(r.section)}</td></tr>`; continue; }
-      h += `<tr class="${r.strong ? "strong" : ""} ${r.savings ? "savings" : ""}"><th>${esc(r.label)}</th>${r.cells.map((cell, i) =>
+      h += `<tr class="${r.strong ? "strong" : ""} ${r.savings ? "savings" : ""} ${r.desc ? "desc" : ""}"><th>${esc(r.label)}</th>${r.cells.map((cell, i) =>
         `<td class="${i === 0 ? "base" : ""} ${String(cell).startsWith("−") ? "neg" : ""} ${cell === "Not supported" ? "na" : ""}">${esc(cell)}</td>`).join("")}</tr>`;
     }
     $("#result").innerHTML = h + "</tbody>";
