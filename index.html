@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OCVS External Storage Pricing</title>
 <meta name="description" content="Compare external block (iSCSI) datastore options for OCVS, AVS and Amazon EVS, with GCVE's NFS options alongside: media, protocol, IOPS, throughput and list price.">
-<link rel="stylesheet" href="css/style.css?v=10">
+<link rel="stylesheet" href="css/style.css?v=11">
 </head>
 <body>
 <header class="top">
@@ -61,14 +61,15 @@
     <h2>Before quoting these figures</h2>
     <ul>
       <li><b>Indicative only.</b> Public list prices without discounts. Confirm on the provider's own calculator before sharing with a customer.</li>
-      <li><b>Not in the price:</b> FSx throughput capacity, ANF Flexible throughput, Filestore custom performance and OCI High Performance Mount Targets are charged separately.</li>
+      <li><b>FSx for ONTAP (EVS)</b> includes its throughput-capacity charge (default 128 MBps). The AWS calculator pre-fills <b>65% compression and deduplication savings</b> and bills only the remaining 35% of capacity; the tool defaults to <b>0%</b> so every service is compared on the capacity you provision. Enter 65% and the throughput AWS uses to reproduce its figure — e.g. 900 TiB, 65%, 256 MBps, Single-AZ, Frankfurt = $48,061.44 + $210.43 = <b>$48,271.87</b>.</li>
+      <li><b>Not in the price:</b> Filestore custom performance and OCI High Performance Mount Targets are charged separately.</li>
       <li><b>Storage only:</b> no VMware nodes, networking, egress, backup, support or taxes.</li>
     </ul>
   </section>
 </main>
 
-<script src="data/storage.js?v=10"></script>
-<script src="data/regions.js?v=10"></script>
-<script src="js/app.js?v=10"></script>
+<script src="data/storage.js?v=11"></script>
+<script src="data/regions.js?v=11"></script>
+<script src="js/app.js?v=11"></script>
 </body>
 </html>

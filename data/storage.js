@@ -123,7 +123,8 @@ window.STORAGE = {
       ],
       notes: [
         "SSD defaults to 3,072 IOPS and 768 MB/s per TiB, both capped by the throughput capacity bought for the file system.",
-        "Throughput capacity is charged separately ($0.822 per MB/s per month Single-AZ, $1.369 Multi-AZ) and is NOT in the price shown.",
+        "Throughput capacity is charged per MBps-month and is included in the price (default 128 MBps, the smallest file system; change it on the card).",
+        "The AWS calculator pre-fills 65% savings from compression and deduplication and bills only the remaining capacity. The tool defaults to 0% so all four services are compared on provisioned capacity; enter 65 to reproduce the AWS calculator.",
         "Extra SSD IOPS cost $0.0204 (Single-AZ) or $0.0408 (Multi-AZ) per IOPS-month.",
         "Capacity pool is cold, tiered storage: tens of milliseconds of latency instead of sub-millisecond."
       ],
