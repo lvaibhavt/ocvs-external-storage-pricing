@@ -32,7 +32,7 @@ window.STORAGE = {
   order: ["ocvs", "gcve", "avs", "evs"],
 
   gaps: {
-    block: { gcve: "Google supports no block (iSCSI/VMFS) datastore for VMware Engine — NFSv3 only, from Filestore or Google Cloud NetApp Volumes." }
+    block: { gcve: "Google supports no block (iSCSI/VMFS) datastore for VMware Engine. Its options are extra vSAN capacity via storage-only nodes, or NFSv3 datastores from Filestore or Google Cloud NetApp Volumes." }
   },
 
   options: [
@@ -131,6 +131,42 @@ window.STORAGE = {
               ["iSCSI datastore setup", "https://docs.aws.amazon.com/evs/latest/userguide/config-fsx-iscsi-datastore.html"],
               ["Performance", "https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/performance.html"],
               ["AWS pricing calculator", "https://calculator.aws/#/createCalculator/FSxONTAP"]]
+    },
+
+    // ---------------- GCVE STORAGE-ONLY NODES (vSAN) ----------------
+    {
+      id: "gcve-so", platform: "gcve", kind: "vsan", name: "Storage-only nodes (vSAN)",
+      protocol: "vSAN (local to the cluster)", datastore: "vSAN", media: "NVMe SSD (local disks)",
+      ownership: "Google first-party", unit: "node", nodeBased: true,
+      scaling: "Adds vSAN capacity to the cluster, no cores or memory", capScope: "per cluster",
+      minSize: "1 node (cluster needs 3 HCI nodes, or 2 in a workload cluster)", maxSize: "Up to 50% of the nodes in a cluster",
+      // rawTB = raw vSAN capacity per node (decimal TB, excluding cache). Hourly prices by term come from regions.js.
+      tiers: [
+        { id: "ve2-small-so", label: "ve2-small-so — 12.8 TB raw", rawTB: 12.8, desc: "Smallest storage-only node: 12.8 TB raw. Pairs with ve2-small HCI nodes.", default: true },
+        { id: "ve2-standard-so", label: "ve2-standard-so — 25.5 TB raw", rawTB: 25.5, desc: "25.5 TB raw per node. Pairs with ve2-standard HCI nodes." },
+        { id: "ve2-large-so", label: "ve2-large-so — 38.4 TB raw", rawTB: 38.4, desc: "38.4 TB raw per node. Pairs with ve2-large HCI nodes." },
+        { id: "ve2-mega-so", label: "ve2-mega-so — 51.2 TB raw", rawTB: 51.2, desc: "Largest storage-only node: 51.2 TB raw. Pairs with ve2-mega HCI nodes." }
+      ],
+      terms: [
+        { id: "3yr", label: "3-year commitment (monthly payments)", idx: 2, default: true },
+        { id: "1yr", label: "1-year commitment (monthly payments)", idx: 1 },
+        { id: "od", label: "On-demand", idx: 0 }
+      ],
+      protections: [
+        { id: "r1", label: "RAID-1, FTT=1 (mirroring) — 50% usable", factor: 0.5, default: true },
+        { id: "r5", label: "RAID-5, FTT=1 (erasure coding) — 75% usable", factor: 0.75 }
+      ],
+      notes: [
+        "Storage-only nodes have no customer-usable cores or memory; they only add vSAN capacity to an existing cluster.",
+        "A cluster needs at least 3 HCI nodes (management cluster) or 2 (workload cluster) before storage-only nodes can be added, and at most 50% of the cluster can be storage-only.",
+        "The node must match the cluster's HCI family and size class (e.g. ve2-small-so with ve2-small-* nodes).",
+        "Usable capacity depends on the vSAN storage policy: RAID-1 (FTT=1) keeps two copies (50% usable); RAID-5 (FTT=1) is about 75% usable. VMware also recommends leaving 25–30% free (slack space), which is not deducted here.",
+        "The price covers the storage-only nodes only — not the HCI nodes they are added to."
+      ],
+      links: [["Storage-only nodes", "https://docs.cloud.google.com/vmware-engine/docs/concepts-storage-only-nodes"],
+              ["Use storage-only nodes", "https://docs.cloud.google.com/vmware-engine/docs/networking/howto-use-storage-only-nodes"],
+              ["Node types", "https://docs.cloud.google.com/vmware-engine/docs/concepts-node-types"],
+              ["VMware Engine pricing", "https://cloud.google.com/vmware-engine/pricing"]]
     },
 
     // ---------------- FILE ----------------

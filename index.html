@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OCVS External Storage Pricing</title>
 <meta name="description" content="Compare external block (iSCSI) datastore options for OCVS, AVS and Amazon EVS, with GCVE's NFS options alongside: media, protocol, IOPS, throughput and list price.">
-<link rel="stylesheet" href="css/style.css?v=9">
+<link rel="stylesheet" href="css/style.css?v=10">
 </head>
 <body>
 <header class="top">
@@ -50,7 +50,8 @@
     <ul>
       <li><b>One datastore = one volume.</b> The tool assumes each datastore is a single volume (or file system) of the size you enter, grown in whole TiB — the normal way OCVS datastores are built. Only if the size is larger than one volume can be (32 TiB for OCI Block Volume) does it use more.</li>
       <li><b>Expected IOPS and throughput</b> come from the provider's published rate for that performance level, up to the <b>maximum per volume</b>. Example: OCI Balanced gives 60 IOPS per GB with a maximum of 25,000 IOPS per volume, so a 20 TiB datastore gets 25,000 IOPS and 480 MB/s — the same figures the OCI cost estimator shows.</li>
-      <li><b>Block storage, except on GCVE.</b> The comparison is about block (iSCSI/VMFS) datastores. Google Cloud VMware Engine supports <b>no block datastore at all</b> — only NFSv3 from Filestore or Google Cloud NetApp Volumes — so GCVE is compared on its NFS options, flagged on the card and in the table.</li>
+      <li><b>Block storage, except on GCVE.</b> The comparison is about block (iSCSI/VMFS) datastores. Google Cloud VMware Engine supports <b>no block datastore at all</b>, so GCVE is compared on what it does offer: <b>storage-only nodes</b> (extra vSAN capacity, priced per node with 1- or 3-year commitments) or NFSv3 from <b>Filestore</b> or <b>Google Cloud NetApp Volumes</b>. Flagged on the card and in the table.</li>
+      <li><b>Storage-only nodes</b> are priced per node. The tool works out how many nodes give your usable capacity: raw TB per node, converted to TiB, times the vSAN protection (RAID-1 = 50% usable, RAID-5 = 75%). Check: 3 × ve2-small-so, 3-year, Frankfurt = 3 × $5.180792 × 730 h = <b>$11,345.93/month</b>, as in the Google Cloud calculator.</li>
       <li><b>Regions.</b> Each region list shows only the regions where that VMware service runs. A storage option is offered only where it is supported as a datastore for that service (for AVS + Azure NetApp Files, Microsoft's published list of supported regions). Frankfurt is the default everywhere.</li>
       <li><b>Prices are monthly list prices.</b> 1 TiB = 1,024 GB/GiB, as in each provider's calculator. Hours per month (default 730) only affects the services billed per hour — Filestore, NetApp Volumes and Azure NetApp Files. The Google and Azure calculators always use 730 hours, so leave it at 730 to match them. Check: Filestore Zonal, Iowa, 100 TiB = 102,400 GiB × $0.25 = <b>$25,600/month</b>, the same as the Google Cloud calculator.</li>
     </ul>
@@ -66,8 +67,8 @@
   </section>
 </main>
 
-<script src="data/storage.js?v=9"></script>
-<script src="data/regions.js?v=9"></script>
-<script src="js/app.js?v=9"></script>
+<script src="data/storage.js?v=10"></script>
+<script src="data/regions.js?v=10"></script>
+<script src="js/app.js?v=10"></script>
 </body>
 </html>

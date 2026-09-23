@@ -1,6 +1,8 @@
 # OCVS External Storage Pricing
 
-Which **block (iSCSI) datastore** options exist for VMware on each hyperscaler, what they cost at list price, and what performance you get. **GCVE has no block datastore**, so it is compared on its NFS options (Filestore by default, or Google Cloud NetApp Volumes), clearly flagged in the tool.
+Which **block (iSCSI) datastore** options exist for VMware on each hyperscaler, what they cost at list price, and what performance you get. **GCVE has no block datastore**, so it is compared on what it does offer: **storage-only nodes** (extra vSAN capacity, priced per node on-demand or with 1-/3-year commitments), or NFS from **Filestore** (the default) or **Google Cloud NetApp Volumes**, clearly flagged in the tool.
+
+For storage-only nodes the tool shows how many nodes your usable capacity needs, and the raw and usable TB they provide under RAID-1 (50% usable) or RAID-5 (75%). Check: 3 x ve2-small-so, 3-year, Frankfurt = 3 x $5.180792 x 730 h = **$11,345.93/month**, matching the Google Cloud calculator.
 
 **Live tool:** https://lvaibhavt.github.io/ocvs-external-storage-pricing/
 

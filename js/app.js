@@ -12,7 +12,7 @@
   const RG = window.STORAGE_REGIONS;
   const DEFAULTS = { kind: "block", tib: 20, hours: D.defaultHours };
   // GCVE defaults to Filestore, its cheaper NFS option, so the comparison stays conservative.
-  const fresh = () => ({ ...DEFAULTS, sel: { gcve: "filestore" }, tier: {}, region: { ...RG.defaults } });
+  const fresh = () => ({ ...DEFAULTS, sel: { gcve: "filestore" }, tier: {}, term: {}, prot: {}, region: { ...RG.defaults } });
   let state = fresh();
 
   const regionsOf = pid => RG.platforms[pid];
@@ -20,7 +20,8 @@
   // The tool compares block (iSCSI) datastores. GCVE has no block option at all,
   // so its NFS options stand in for it, clearly flagged everywhere they appear.
   const usesNfsFallback = pid => pid === "gcve";
-  const allOpts = (pid) => D.options.filter(o => o.platform === pid && o.kind === (usesNfsFallback(pid) ? "file" : "block"));
+  const allOpts = (pid) => D.options.filter(o => o.platform === pid &&
+    (usesNfsFallback(pid) ? (o.kind === "vsan" || o.kind === "file") : o.kind === "block"));
   const availIn = (pid, o) => (regionOf(pid).avail || {})[o.id];
   const optsFor = (pid) => allOpts(pid).filter(o => availIn(pid, o));
   function chosen(pid) {
@@ -36,18 +37,29 @@
     if (!t) return null;
     const p = avail[t.id];
     if (p == null) return t;
+    if (o.nodeBased) return { ...t, priceHr: p[termOf(o).idx] };
     return t.priceHr != null ? { ...t, priceHr: p } : { ...t, price: p };
   }
+  const termOf = o => o.terms.find(x => x.id === state.term[o.id]) || o.terms.find(x => x.default);
+  const protOf = o => o.protections.find(x => x.id === state.prot[o.id]) || o.protections.find(x => x.default);
+  // Storage-only nodes: usable TiB per node = raw TB (decimal) in TiB x protection factor.
+  const usableTiB = (o, t) => t.rawTB * 1e12 / 2 ** 40 * protOf(o).factor;
+  const nodesFor = (o, t) => Math.max(1, Math.ceil(state.tib / usableTiB(o, t)));
   function tiersIn(o) {
     const avail = availIn(o.platform, o) || {};
     return o.tiers.filter(t => !(t.id in avail) || avail[t.id] != null);
   }
   const unitRate = t => (t ? (t.priceHr != null ? t.priceHr * state.hours : t.price) : null);
-  const monthly = (o, t) => (o && t && !o.priceOnRequest ? unitRate(t) * state.tib * U : null);
+  const monthly = (o, t) => {
+    if (!o || !t || o.priceOnRequest) return null;
+    if (o.nodeBased) return nodesFor(o, t) * t.priceHr * state.hours;
+    return unitRate(t) * state.tib * U;
+  };
 
   // Expected performance of the datastore at the chosen capacity.
   function perf(o, t, tib) {
     if (!o || !t) return null;
+    if (o.nodeBased) return { nodeBased: true };
     const unit = t.mib ? "MiB/s" : "MB/s";
     if (t.fixedMbps) return { mbps: t.fixedMbps, unit, fixed: true, units: 1 };
     const units = o.unitMaxTiB ? Math.max(1, Math.ceil(tib / o.unitMaxTiB)) : 1;
@@ -64,6 +76,7 @@
   }
   function perfText(p) {
     if (!p) return "—";
+    if (p.nodeBased) return "vSAN, not published per node";
     if (p.fixed) return `${mb(p.mbps)} ${p.unit}`;
     const bits = [];
     if (p.iops) bits.push(`${num(p.iops)} IOPS`);
@@ -73,6 +86,7 @@
   // "60 IOPS/GB · 480 KB/s per GB", as the OCI estimator words it
   function rateText(t) {
     if (!t) return "not published";
+    if (t.rawTB) return "vSAN performance is not published per storage-only node";
     if (t.fixedMbps) return "Set by the mount target, not by capacity";
     const u = t.mib ? "MiB/s" : "MB/s";
     const i = t.iopsPerGB ? `${num(t.iopsPerGB)} IOPS per GB` : t.iopsPerTiB ? `${num(t.iopsPerTiB)} IOPS per TiB` : null;
@@ -81,6 +95,7 @@
   }
   function maxText(o, t) {
     if (!t) return "not published";
+    if (o.nodeBased) return "Up to 50% of the cluster's nodes";
     const u = t.mib ? "MiB/s" : "MB/s";
     if (t.fixedMbps) return `${mb(t.fixedMbps)} ${u} per mount target`;
     const bits = [];
@@ -108,7 +123,7 @@
           <div><div class="pv-name">${esc(p.name)}${p.baseline ? '<span class="tag">BASELINE</span>' : ""}</div>
             <div class="pv-sub">${esc(p.longName)}</div></div></div>
         <div class="pv-body">
-          ${usesNfsFallback(pid) ? `<div class="fallback"><b>No block option on GCVE.</b> Google supports no iSCSI/VMFS datastore for VMware Engine, so its NFS services are compared here instead.</div>` : ""}
+          ${usesNfsFallback(pid) ? `<div class="fallback"><b>No block option on GCVE.</b> Google supports no iSCSI/VMFS datastore for VMware Engine, so its alternatives are compared instead: storage-only nodes (extra vSAN) or NFS from Filestore / NetApp Volumes.</div>` : ""}
           ${regionSel}
           <label>Service
             <select data-k="opt">${list.map(x => `<option value="${x.id}" ${x === o ? "selected" : ""}>${esc(x.name)}${x.partner ? " (partner)" : ""}</option>`).join("")}</select></label>
@@ -116,13 +131,19 @@
             <select data-k="tier">${tiersIn(o).map(x => `<option value="${x.id}" ${t && x.id === t.id ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select>
             ${t && t.desc ? `<span class="tier-desc">${esc(t.desc)}</span>` : ""}</label>`
             : `<div class="chip warn">No published tiers</div>`}
+          ${o.nodeBased ? `<label>Commitment
+            <select data-k="term">${o.terms.map(x => `<option value="${x.id}" ${x.id === termOf(o).id ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label>
+          <label>vSAN protection
+            <select data-k="prot">${o.protections.map(x => `<option value="${x.id}" ${x.id === protOf(o).id ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label>
+          <div class="so-box"><b>${nodesFor(o, t)} × ${esc(t.id)}</b> for ${state.tib} TiB usable<br>
+            ${(nodesFor(o, t) * t.rawTB).toFixed(1)} TB raw · ${(nodesFor(o, t) * usableTiB(o, t)).toFixed(1)} TiB usable (${esc(protOf(o).label.split(" — ")[0])})</div>` : ""}
           <div class="chips">
             <span class="chip">${esc(o.protocol)}</span>
             <span class="chip">${esc(o.datastore)}</span>
             <span class="chip">${esc(o.media)}</span>
           </div>
           <div class="foot-row">
-            <div class="perf">${o.priceOnRequest ? "Not published" : esc(perfText(pf))}<span>expected at ${state.tib} TiB</span></div>
+            <div class="perf">${o.priceOnRequest ? "Not published" : esc(perfText(pf))}<span>${o.nodeBased ? `${nodesFor(o, t)} nodes · ${esc(termOf(o).label)}` : `expected at ${state.tib} TiB`}</span></div>
             <div class="rate">${o.priceOnRequest ? "on request" : usd(cost, 0)}<span>per month</span></div>
           </div>
         </div></div>`;
@@ -155,6 +176,15 @@
     row("Performance level", c => c.none ? na : (c.t ? c.t.label : "n/a"));
     row("What this level means", c => c.none ? na : (c.t && c.t.desc ? c.t.desc : (c.o.priceOnRequest ? "Partner product — sizing and performance set with the vendor" : "—")), { desc: true });
     row("Ownership", c => c.none ? na : c.o.ownership);
+    row(`What you buy for ${state.tib} TiB`, c => {
+      if (c.none) return na;
+      if (c.o.priceOnRequest) return "Sized with the vendor";
+      if (c.o.nodeBased) {
+        const n = nodesFor(c.o, c.t);
+        return `${n} × ${c.t.id} storage-only node${n > 1 ? "s" : ""} = ${(n * c.t.rawTB).toFixed(1)} TB raw, ${(n * usableTiB(c.o, c.t)).toFixed(1)} TiB usable (${protOf(c.o).label.split(" — ")[0]})`;
+      }
+      return `${state.tib} TiB ${c.o.datastore === "NFS" ? "file system" : "volume"}`;
+    });
 
     sec("PROTOCOL & MEDIA");
     row("Protocol", c => c.none ? na : c.o.protocol);
@@ -182,10 +212,11 @@
     row("Rate", c => {
       if (c.none) return na;
       if (por(c)) return "on request";
+      if (c.o.nodeBased) return `$${c.t.priceHr.toFixed(6)} per node-hour × ${state.hours} h × ${nodesFor(c.o, c.t)} nodes (${termOf(c.o).label})`;
       return `$${unitRate(c.t).toFixed(4)} per ${c.o.unit} per month` +
         (c.t.priceHr != null ? mark(`${c.o.name} is billed per ${c.o.unit}-hour ($${c.t.priceHr.toFixed(6)}), so the monthly rate is × ${state.hours} hours.`) : "");
     });
-    row("Per TiB", c => c.none ? na : (por(c) ? "on request" : usd(c.cost / state.tib)));
+    row("Per TiB", c => c.none ? na : (por(c) ? "on request" : usd(c.cost / state.tib)) + (c.o && c.o.nodeBased ? " (of usable TiB requested)" : ""));
     row(`${state.tib} TiB per month`, c => c.none ? na : (por(c) ? "on request" : usd(c.cost, 0)), { strong: true });
 
     const callouts = [];
@@ -247,6 +278,8 @@
     if (el.dataset.k === "region") state.region[pid] = el.value;
     if (el.dataset.k === "opt") state.sel[pid] = el.value;
     if (el.dataset.k === "tier" && chosen(pid)) state.tier[chosen(pid).id] = el.value;
+    if (el.dataset.k === "term" && chosen(pid)) state.term[chosen(pid).id] = el.value;
+    if (el.dataset.k === "prot" && chosen(pid)) state.prot[chosen(pid).id] = el.value;
     update();
   });
 
