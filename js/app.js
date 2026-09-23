@@ -11,16 +11,20 @@
   // Only when the capacity is bigger than one volume can be does it use more.
   const RG = window.STORAGE_REGIONS;
   const DEFAULTS = { kind: "block", tib: 20, hours: D.defaultHours };
-  const fresh = () => ({ ...DEFAULTS, sel: {}, tier: {}, region: { ...RG.defaults } });
+  // GCVE defaults to Filestore, its cheaper NFS option, so the comparison stays conservative.
+  const fresh = () => ({ ...DEFAULTS, sel: { gcve: "filestore" }, tier: {}, region: { ...RG.defaults } });
   let state = fresh();
 
   const regionsOf = pid => RG.platforms[pid];
   const regionOf = pid => regionsOf(pid).find(r => r.id === state.region[pid]) || regionsOf(pid)[0];
-  const allOpts = (pid, kind) => D.options.filter(o => o.platform === pid && o.kind === kind);
+  // The tool compares block (iSCSI) datastores. GCVE has no block option at all,
+  // so its NFS options stand in for it, clearly flagged everywhere they appear.
+  const usesNfsFallback = pid => pid === "gcve";
+  const allOpts = (pid) => D.options.filter(o => o.platform === pid && o.kind === (usesNfsFallback(pid) ? "file" : "block"));
   const availIn = (pid, o) => (regionOf(pid).avail || {})[o.id];
-  const optsFor = (pid, kind) => allOpts(pid, kind).filter(o => availIn(pid, o));
+  const optsFor = (pid) => allOpts(pid).filter(o => availIn(pid, o));
   function chosen(pid) {
-    const list = optsFor(pid, state.kind);
+    const list = optsFor(pid);
     return list.length ? (list.find(o => o.id === state.sel[pid]) || list[0]) : null;
   }
   // Tier with this region's price applied (the data file holds Frankfurt prices).
@@ -88,16 +92,15 @@
   // ---------- picker cards ----------
   function renderPickers() {
     $("#pickers").innerHTML = D.order.map(pid => {
-      const p = D.platforms[pid], list = optsFor(pid, state.kind), reg = regionOf(pid);
+      const p = D.platforms[pid], list = optsFor(pid), reg = regionOf(pid);
       const regionSel = `<label>Region (${regionsOf(pid).length} with ${esc(p.name)})
           <select data-k="region">${regionsOf(pid).map(r => `<option value="${esc(r.id)}" ${r.id === reg.id ? "selected" : ""}>${esc(r.name)}</option>`).join("")}</select></label>`;
       if (!list.length) {
-        const gap = (D.gaps[state.kind] || {})[pid];
-        const missing = allOpts(pid, state.kind).map(o => o.name).join(" or ");
+        const missing = allOpts(pid).map(o => o.name).join(" or ");
         return `<div class="card pv off" data-pid="${pid}"><div class="pv-head"><span class="dot" style="background:${p.accent}"></span>
             <div><div class="pv-name">${esc(p.name)}</div><div class="pv-sub">${esc(p.longName)}</div></div></div>
-          <div class="pv-body">${regionSel}<div class="nosupport"><b>No ${esc(state.kind)} option${gap ? "" : " in this region"}</b>
-            <span>${esc(gap || `${missing} is not available as a datastore in ${reg.name}.`)}</span></div></div></div>`;
+          <div class="pv-body">${regionSel}<div class="nosupport"><b>No external storage in this region</b>
+            <span>${esc(`${missing} is not available as a datastore in ${reg.name}.`)}</span></div></div></div>`;
       }
       const o = chosen(pid), t = tierOf(o), pf = perf(o, t, state.tib), cost = monthly(o, t);
       return `<div class="card pv${p.baseline ? " base" : ""}${o.partner ? " partner" : ""}" data-pid="${pid}">
@@ -105,6 +108,7 @@
           <div><div class="pv-name">${esc(p.name)}${p.baseline ? '<span class="tag">BASELINE</span>' : ""}</div>
             <div class="pv-sub">${esc(p.longName)}</div></div></div>
         <div class="pv-body">
+          ${usesNfsFallback(pid) ? `<div class="fallback"><b>No block option on GCVE.</b> Google supports no iSCSI/VMFS datastore for VMware Engine, so its NFS services are compared here instead.</div>` : ""}
           ${regionSel}
           <label>Service
             <select data-k="opt">${list.map(x => `<option value="${x.id}" ${x === o ? "selected" : ""}>${esc(x.name)}${x.partner ? " (partner)" : ""}</option>`).join("")}</select></label>
@@ -147,14 +151,14 @@
 
     sec("CONFIGURATION");
     row("Region", c => c.region.name);
-    row("Service", c => c.none ? ((D.gaps[state.kind] || {})[c.pid] ? "Not supported" : "Not available in this region") : c.o.name);
+    row("Service", c => c.none ? "Not available in this region" : c.o.name + (usesNfsFallback(c.pid) ? mark(D.gaps.block.gcve) : ""));
     row("Performance level", c => c.none ? na : (c.t ? c.t.label : "n/a"));
     row("What this level means", c => c.none ? na : (c.t && c.t.desc ? c.t.desc : (c.o.priceOnRequest ? "Partner product — sizing and performance set with the vendor" : "—")), { desc: true });
     row("Ownership", c => c.none ? na : c.o.ownership);
 
     sec("PROTOCOL & MEDIA");
     row("Protocol", c => c.none ? na : c.o.protocol);
-    row("Datastore type", c => c.none ? na : c.o.datastore);
+    row("Datastore type", c => c.none ? na : c.o.datastore + (usesNfsFallback(c.pid) ? " (no block option)" : ""));
     row("Media", c => c.none ? na : c.o.media);
     row("Size limits", c => c.none ? na : `${c.o.minSize} to ${c.o.maxSize}`);
 
@@ -221,19 +225,16 @@
     $("#svc-notes").innerHTML = cols.filter(c => !c.none).map(c =>
       `<details><summary>${esc(c.platform.name)} — ${esc(c.o.name)}</summary><ul>${c.o.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>
         <p class="links">${c.o.links.map(([l, href]) => `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(l)}</a>`).join(" · ")}</p></details>`).join("");
-    $("#head-sub").textContent = `${state.tib} TiB datastore · ${state.kind === "block" ? "block (iSCSI)" : "file (NFS)"} · list prices as of ${D.asOf}`;
+    $("#head-sub").textContent = `${state.tib} TiB datastore · block (iSCSI), GCVE compared on NFS · list prices as of ${D.asOf}`;
   }
 
   function update() {
-    document.querySelectorAll(".seg button").forEach(b => b.classList.toggle("on", b.dataset.v === state.kind));
     $("#cap").value = state.tib; $("#hours").value = state.hours;
     $("#units").textContent = (state.tib * U).toLocaleString("en-US");
     renderPickers(); renderTable();
   }
 
   document.addEventListener("click", e => {
-    const seg = e.target.closest(".seg button");
-    if (seg) { state.kind = seg.dataset.v; return update(); }
     if (e.target.closest("#reset")) { state = fresh(); return update(); }
   });
   document.addEventListener("change", e => {

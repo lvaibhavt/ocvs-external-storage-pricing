@@ -1,6 +1,6 @@
 # OCVS External Storage Pricing
 
-Which **external datastore** options exist for VMware on each hyperscaler, what they cost at list price, and what performance you get.
+Which **block (iSCSI) datastore** options exist for VMware on each hyperscaler, what they cost at list price, and what performance you get. **GCVE has no block datastore**, so it is compared on its NFS options (Filestore by default, or Google Cloud NetApp Volumes), clearly flagged in the tool.
 
 **Live tool:** https://lvaibhavt.github.io/ocvs-external-storage-pricing/
 
