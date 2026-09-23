@@ -19,6 +19,8 @@ For more on OCI storage performance with OCVS, see Oracle's articles:
 [Performance of OCI Block Volume with OCVS standard shapes](https://blogs.oracle.com/cloud-infrastructure/performance-oci-block-volume-ocvs-standard-shapes) and
 [How OCI set new storage performance standards](https://blogs.oracle.com/cloud-infrastructure/how-oci-set-new-storage-performance-standards).
 
+**Download PPT** builds an "OCVS Storage Advantage" slide from whatever is on screen (same style as the compute pricing deck), plus an assumptions & sources slide.
+
 ## What's covered
 
 | Platform | Block | File |

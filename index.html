@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OCVS External Storage Pricing</title>
 <meta name="description" content="Compare external block (iSCSI) datastore options for OCVS, AVS and Amazon EVS, with GCVE's NFS options alongside: media, protocol, IOPS, throughput and list price.">
-<link rel="stylesheet" href="css/style.css?v=12">
+<link rel="stylesheet" href="css/style.css?v=13">
 </head>
 <body>
 <header class="top">
@@ -34,6 +34,7 @@
     <div class="result-head">
       <h2>Comparison</h2>
       <span class="muted" id="head-sub"></span>
+      <button id="export" type="button" class="primary">Download PPT</button>
     </div>
     <div class="table-scroll"><table id="result"></table></div>
     <div class="callouts" id="callouts"></div>
@@ -68,8 +69,10 @@
   </section>
 </main>
 
-<script src="data/storage.js?v=12"></script>
-<script src="data/regions.js?v=12"></script>
-<script src="js/app.js?v=12"></script>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script src="data/storage.js?v=13"></script>
+<script src="data/regions.js?v=13"></script>
+<script src="js/ppt.js?v=13"></script>
+<script src="js/app.js?v=13"></script>
 </body>
 </html>

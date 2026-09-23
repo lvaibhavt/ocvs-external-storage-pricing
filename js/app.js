@@ -277,7 +277,20 @@
       `<details><summary>${esc(c.platform.name)} — ${esc(c.o.name)}</summary><ul>${c.o.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>
         <p class="links">${c.o.links.map(([l, href]) => `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(l)}</a>`).join(" · ")}</p></details>`).join("");
     $("#head-sub").textContent = `${state.tib} TiB datastore · block (iSCSI), GCVE compared on NFS · list prices as of ${D.asOf}`;
+
+    // Everything the slide needs, so the PPT always matches the page.
+    lastReport = {
+      heads: cols.map(c => c.platform.name),
+      rows: rows.filter(r => !r.desc),
+      callouts, notes,
+      subtitle: [`${state.tib} TiB datastore`, "Block (iSCSI) · GCVE on its non-block alternative", "Monthly list prices", `${state.hours} hours/month for hourly-billed services`].join("  ·  "),
+      sources: cols.filter(c => !c.none).map(c => ({
+        platform: c.platform.longName, region: c.region.name, service: c.o.name + (c.t ? ` — ${c.t.label}` : ""),
+        links: c.o.links.map(l => l[1]) })),
+      tib: state.tib, asOf: D.asOf
+    };
   }
+  let lastReport = null;
 
   function update() {
     $("#cap").value = state.tib; $("#hours").value = state.hours;
@@ -287,6 +300,13 @@
 
   document.addEventListener("click", e => {
     if (e.target.closest("#reset")) { state = fresh(); return update(); }
+    const dl = e.target.closest("#export");
+    if (dl) {
+      dl.disabled = true; const label = dl.textContent; dl.textContent = "Building…";
+      Promise.resolve().then(() => window.StorageDeck.download(lastReport))
+        .catch(err => alert("Could not build the PowerPoint: " + err.message))
+        .finally(() => { dl.disabled = false; dl.textContent = label; });
+    }
   });
   document.addEventListener("change", e => {
     const el = e.target;
@@ -306,4 +326,5 @@
   });
 
   update();
+  window.StorageApp = { current: () => lastReport };
 })();
