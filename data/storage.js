@@ -47,11 +47,15 @@ window.STORAGE = {
         { desc: "Cheapest level. Suited to backups, archives and large sequential reads, not to running VMs.", id: "0", label: "Lower Cost (0 VPU)", price: 0.0255, iopsPerGB: 2, kbpsPerGB: 240, iopsPerTiB: 2048, mbpsPerTiB: 240, capIops: 3000, capMbps: 480 },
         { desc: "The default. Good for most VMware workloads — general-purpose VMs, app and web servers.", id: "10", label: "Balanced (10 VPU)", price: 0.0425, iopsPerGB: 60, kbpsPerGB: 480, iopsPerTiB: 61440, mbpsPerTiB: 480, capIops: 25000, capMbps: 480, default: true },
         { desc: "For I/O-heavy workloads such as databases, doubling the per-volume maximum of Balanced.", id: "20", label: "Higher Performance (20 VPU)", price: 0.0595, iopsPerGB: 75, kbpsPerGB: 600, iopsPerTiB: 76800, mbpsPerTiB: 600, capIops: 50000, capMbps: 680 },
-        { desc: "For the most demanding, latency-sensitive workloads. OCI allows up to 120 VPU for even more.", id: "30", label: "Ultra High (30 VPU)", price: 0.0765, iopsPerGB: 90, kbpsPerGB: 720, iopsPerTiB: 92160, mbpsPerTiB: 720, capIops: 75000, capMbps: 880 }
+        { desc: "Ultra High Performance, entry level. For demanding, latency-sensitive workloads. Needs a multipath-enabled attachment.", id: "30", label: "Ultra High (30 VPU)", price: 0.0765, iopsPerGB: 90, kbpsPerGB: 720, iopsPerTiB: 92160, mbpsPerTiB: 720, capIops: 75000, capMbps: 880 },
+        { desc: "Ultra High Performance at 40 VPU: 105 IOPS/GB, up to 100,000 IOPS and 1,080 MB/s per volume (reached at 952 GB). Needs a multipath-enabled attachment.", id: "40", label: "Ultra High (40 VPU)", price: 0.0935, iopsPerGB: 105, kbpsPerGB: 840, iopsPerTiB: 107520, mbpsPerTiB: 840, capIops: 100000, capMbps: 1080 },
+        { desc: "Ultra High Performance at 50 VPU: 120 IOPS/GB, up to 125,000 IOPS and 1,280 MB/s per volume (reached at 1,042 GB). Needs a multipath-enabled attachment.", id: "50", label: "Ultra High (50 VPU)", price: 0.1105, iopsPerGB: 120, kbpsPerGB: 960, iopsPerTiB: 122880, mbpsPerTiB: 960, capIops: 125000, capMbps: 1280 }
       ],
       notes: [
         "Balanced: 60 IOPS and 480 KB/s per GB, up to 25,000 IOPS and 480 MB/s per volume — the same figures as the OCI cost estimator.",
-        "Higher levels raise the maximum per volume: 50,000 IOPS at Higher Performance, 75,000 at Ultra High (30 VPU).",
+        "Higher levels raise the maximum per volume: 50,000 IOPS at Higher Performance (20 VPU); 75,000 / 100,000 / 125,000 IOPS at Ultra High 30 / 40 / 50 VPU. Oracle's table goes up to 120 VPU (300,000 IOPS).",
+        "Each VPU adds $0.0017 per GB per month to the $0.0255 storage price: 40 VPU = $0.0935, 50 VPU = $0.1105 per GB.",
+        "Ultra High Performance volumes (30 VPU and above) need a multipath-enabled attachment.",
         "The performance level can be changed online, with no downtime."
       ],
       links: [["OCI price list", "https://www.oracle.com/cloud/price-list/#block-volume"],
