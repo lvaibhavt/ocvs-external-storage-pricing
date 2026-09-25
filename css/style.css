@@ -125,3 +125,43 @@ tr.desc td.base { font-weight: 600; color: var(--navy); }
 .info { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; margin-left: 6px; border-radius: 50%; background: #1F2A5C; color: #fff; font: italic 700 11px Georgia, serif; cursor: help; vertical-align: 2px; }
 .info-pop { display: none; position: absolute; top: 24px; left: -10px; z-index: 20; width: 270px; padding: 10px 12px; background: #fff; color: #333; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.15); font: 400 13px/1.45 system-ui, sans-serif; text-align: left; }
 .info:hover .info-pop, .info:focus .info-pop, .info:focus-within .info-pop { display: block; }
+
+/* ---- assumptions panel (redesign) ---- */
+.settings { display: block; padding: 18px 22px 20px; }
+.set-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.set-title { margin: 0; font-size: 18px; color: var(--navy); }
+.link-btn { border: 0; background: none; color: var(--navy); font: 600 13px system-ui, sans-serif; cursor: pointer; padding: 6px 10px; border-radius: 6px; }
+.link-btn:hover { background: var(--sec); }
+.set-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 18px; }
+.set-group { background: #fafbfd; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.grp-label { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--brown); margin-bottom: 10px; }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; color: var(--ink); }
+.unit-input { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; width: fit-content; }
+.unit-input:focus-within { border-color: var(--navy); box-shadow: 0 0 0 3px rgba(31,42,92,.12); }
+.settings .unit-input input { border: 0; outline: 0; width: 80px; padding: 8px 10px; font: 600 15px system-ui, sans-serif; background: transparent; }
+.unit-input > span { display: flex; align-items: center; padding: 0 10px; background: var(--sec); color: var(--muted); font-size: 12px; font-weight: 600; border-left: 1px solid var(--line); }
+.field .hint b { color: var(--ink); }
+.switches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.sw { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px; cursor: pointer; transition: border-color .15s, background .15s; }
+.sw:hover { border-color: #aab2c8; }
+.sw input { position: absolute; opacity: 0; pointer-events: none; }
+.knob { flex: none; position: relative; width: 36px; height: 20px; border-radius: 20px; background: #c9ceda; transition: background .15s; }
+.knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s; }
+.sw input:checked + .knob { background: var(--navy); }
+.sw input:checked + .knob::after { transform: translateX(16px); }
+.sw input:focus-visible + .knob { box-shadow: 0 0 0 3px rgba(31,42,92,.25); }
+.sw:has(input:checked) { border-color: var(--navy); background: var(--base); }
+.sw-text { display: flex; flex-direction: column; line-height: 1.25; }
+.sw-text b { font-size: 13px; color: var(--ink); }
+.sw-text small { font-size: 11.5px; color: var(--muted); }
+.disc-box { margin-top: 14px; background: var(--base); border-color: #c7d6ee; }
+.disc-box label { display: flex; flex-direction: column; gap: 5px; font-weight: 600; }
+.disc-box .unit-input input { width: 60px; }
+@media (max-width: 900px) {
+  .set-grid { grid-template-columns: 1fr; }
+  .switches { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) { .fields { grid-template-columns: 1fr; } }
+.settings label.sw { flex-direction: row; align-items: center; }
+.disc-box label { flex-direction: column; }
