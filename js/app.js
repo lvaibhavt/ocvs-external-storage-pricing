@@ -66,10 +66,12 @@
   // Same steps as the AWS pricing calculator: capacity x (1 - savings), at least 1,024 GB of SSD,
   // plus throughput capacity per MBps-month.
   const isFsx = o => o && o.id.startsWith("fsx-");
-  const fsxGB = () => Math.max(state.tib * U * (1 - state.fsxDR / 100), 1024);
+  // FSx dedupe and throughput are editable only with "Choose performance level" on; otherwise 0% and 128 MBps.
+  const fdr = () => (state.showTiers ? state.fsxDR : 0), fmb = () => (state.showTiers ? state.fsxMbps : 128);
+  const fsxGB = () => Math.max(state.tib * U * (1 - fdr() / 100), 1024);
   const fsxStorage = (o, t) => fsxGB() * t.price;
   const fsxTputRate = (o, t) => ((availIn(o.platform, o) || {})._tput || {})[t.id] ?? t.mbpsPrice ?? 0;
-  const fsxThroughput = (o, t) => state.fsxMbps * fsxTputRate(o, t);
+  const fsxThroughput = (o, t) => fmb() * fsxTputRate(o, t);
 
   // Expected performance of the datastore at the chosen capacity.
   function perf(o, t, tib) {
@@ -151,7 +153,7 @@
             <select data-k="prot">${o.protections.map(x => `<option value="${x.id}" ${x.id === protOf(o).id ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select></label>
           <div class="so-box"><b>${nodesFor(o, t)} × ${esc(t.id)}</b> for ${state.tib} TiB usable<br>
             ${(nodesFor(o, t) * t.rawTB).toFixed(1)} TB raw · ${(nodesFor(o, t) * usableTiB(o, t)).toFixed(1)} TiB usable (${esc(protOf(o).label.split(" — ")[0])})</div>` : ""}
-          ${isFsx(o) ? `<div class="row2">
+          ${isFsx(o) && state.showTiers ? `<div class="row2">
             <label>Dedupe + compression savings
               <input type="number" data-k="fsxDR" min="0" max="90" step="5" value="${state.fsxDR}"><span class="hint">% — AWS calculator pre-fills 65</span></label>
             <label>Throughput capacity (MBps)
@@ -205,7 +207,7 @@
         const n = nodesFor(c.o, c.t);
         return `${n} × ${c.t.id} storage-only node${n > 1 ? "s" : ""} = ${(n * c.t.rawTB).toFixed(1)} TB raw, ${(n * usableTiB(c.o, c.t)).toFixed(1)} TiB usable (${protOf(c.o).label.split(" — ")[0]})`;
       }
-      if (isFsx(c.o)) return `${state.tib} TiB file system` + (state.fsxDR ? `, billed as ${num(fsxGB())} GB after ${state.fsxDR}% dedupe/compression` : "") + ` + ${num(state.fsxMbps)} MBps throughput`;
+      if (isFsx(c.o)) return `${state.tib} TiB file system` + (fdr() ? `, billed as ${num(fsxGB())} GB after ${fdr()}% dedupe/compression` : "") + ` + ${num(fmb())} MBps throughput`;
       return `${state.tib} TiB ${c.o.datastore === "NFS" ? "file system" : "volume"}`;
     });
 
@@ -239,7 +241,7 @@
       if (por(c)) return "on request";
       if (c.o.nodeBased) return `$${c.t.priceHr.toFixed(6)} per node-hour × ${state.hours} h × ${nodesFor(c.o, c.t)} nodes (${termOf(c.o).label})`;
       if (isFsx(c.o)) return `$${c.t.price.toFixed(4)} per GB (${usd(fsxStorage(c.o, c.t), 0)}) + $${fsxTputRate(c.o, c.t).toFixed(3)} per MBps (${usd(fsxThroughput(c.o, c.t), 0)})` +
-        (state.fsxDR ? mark(`FSx is billed on ${num(fsxGB())} GB, i.e. after ${state.fsxDR}% assumed compression and deduplication, as the AWS calculator does. The other services here bill full provisioned capacity; set 0% for a like-for-like comparison.`) : "");
+        (fdr() ? mark(`FSx is billed on ${num(fsxGB())} GB, i.e. after ${fdr()}% assumed compression and deduplication, as the AWS calculator does. The other services here bill full provisioned capacity; set 0% for a like-for-like comparison.`) : "");
       return `$${unitRate(c.t).toFixed(4)} per ${c.o.unit} per month` +
         (c.t.priceHr != null ? mark(`${c.o.name} is billed per ${c.o.unit}-hour ($${c.t.priceHr.toFixed(6)}), so the monthly rate is × ${state.hours} hours.`) : "");
     });
