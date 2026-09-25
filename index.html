@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OCVS External Storage Pricing</title>
 <meta name="description" content="Compare external block (iSCSI) datastore options for OCVS, AVS and Amazon EVS, with GCVE's NFS options alongside: media, protocol, IOPS, throughput and list price.">
-<link rel="stylesheet" href="css/style.css?v=13">
+<link rel="stylesheet" href="css/style.css?v=14">
 </head>
 <body>
 <header class="top">
@@ -23,6 +23,9 @@
     <label>Hours per month
       <input id="hours" type="number" min="1" max="744" step="1" value="730">
       <span class="hint">Keep 730 to match the Google and Azure calculators</span>
+    </label>
+    <label class="toggle-perf">Performance figures
+      <span class="switch-row"><input id="showPerf" type="checkbox"> <span>Show IOPS and throughput</span></span>
     </label>
     <p class="units">1 TiB = 1,024 units · you are pricing <b id="units">102,400</b> GB/GiB</p>
     <button id="reset" class="ghost" type="button">Reset to defaults</button>
@@ -70,9 +73,9 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
-<script src="data/storage.js?v=13"></script>
-<script src="data/regions.js?v=13"></script>
-<script src="js/ppt.js?v=13"></script>
-<script src="js/app.js?v=13"></script>
+<script src="data/storage.js?v=14"></script>
+<script src="data/regions.js?v=14"></script>
+<script src="js/ppt.js?v=14"></script>
+<script src="js/app.js?v=14"></script>
 </body>
 </html>

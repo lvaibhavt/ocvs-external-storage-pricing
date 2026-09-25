@@ -10,7 +10,7 @@
   // A datastore is one volume (or one file system / instance), grown in whole TiB.
   // Only when the capacity is bigger than one volume can be does it use more.
   const RG = window.STORAGE_REGIONS;
-  const DEFAULTS = { kind: "block", tib: 20, hours: D.defaultHours };
+  const DEFAULTS = { kind: "block", tib: 20, hours: D.defaultHours, showPerf: false };   // performance hidden by default
   // GCVE defaults to Filestore, its cheaper NFS option, so the comparison stays conservative.
   // FSx: dedupe/compression 0% (like-for-like with the other services, which bill provisioned
   // capacity) and 128 MBps throughput capacity, the smallest file system AWS offers.
@@ -160,7 +160,8 @@
             <span class="chip">${esc(o.media)}</span>
           </div>
           <div class="foot-row">
-            <div class="perf">${o.priceOnRequest ? "Not published" : esc(perfText(pf))}<span>${o.nodeBased ? `${nodesFor(o, t)} nodes · ${esc(termOf(o).label)}` : `expected at ${state.tib} TiB`}</span></div>
+            <div class="perf">${state.showPerf ? `${o.priceOnRequest ? "Not published" : esc(perfText(pf))}<span>${o.nodeBased ? `${nodesFor(o, t)} nodes · ${esc(termOf(o).label)}` : `expected at ${state.tib} TiB`}</span>`
+              : `${state.tib} TiB<span>${o.nodeBased ? `${nodesFor(o, t)} nodes · ${esc(termOf(o).label)}` : "datastore"}</span>`}</div>
             <div class="rate">${o.priceOnRequest ? "on request" : usd(cost, 0)}<span>per month</span></div>
           </div>
         </div></div>`;
@@ -210,21 +211,23 @@
     row("Media", c => c.none ? na : c.o.media);
     row("Size limits", c => c.none ? na : `${c.o.minSize} to ${c.o.maxSize}`);
 
-    sec("PERFORMANCE");
-    row("Performance rate", c => c.none ? na : (por(c) ? "not published" : rateText(c.t)));
-    row("Maximum per volume", c => c.none ? na : (por(c) ? "not published" : maxText(c.o, c.t)));
-    row(`Expected IOPS at ${state.tib} TiB`, c => {
-      if (c.none || por(c) || !c.pf) return c.none ? na : "not published";
-      if (c.pf.fixed) return "n/a";
-      if (!c.pf.iops) return "not published";
-      const extra = c.pf.units > 1 ? mark(`${c.o.name}: ${state.tib} TiB is larger than one ${c.o.unitLabel} can be (${c.o.unitMaxTiB} TiB), so this datastore needs ${c.pf.units} ${c.o.unitLabel}s.`) : "";
-      return num(c.pf.iops) + (c.pf.wIops ? ` read · ${num(c.pf.wIops)} write` : "") + extra;
-    }, { strong: true });
-    row(`Expected throughput at ${state.tib} TiB`, c => {
-      if (c.none || por(c) || !c.pf) return c.none ? na : "not published";
-      if (!c.pf.mbps) return "not published";
-      return `${mb(c.pf.mbps)} ${c.pf.unit}` + (c.pf.wMbps ? ` read · ${mb(c.pf.wMbps)} write` : "");
-    }, { strong: true });
+    if (state.showPerf) {
+      sec("PERFORMANCE");
+      row("Performance rate", c => c.none ? na : (por(c) ? "not published" : rateText(c.t)));
+      row("Maximum per volume", c => c.none ? na : (por(c) ? "not published" : maxText(c.o, c.t)));
+      row(`Expected IOPS at ${state.tib} TiB`, c => {
+        if (c.none || por(c) || !c.pf) return c.none ? na : "not published";
+        if (c.pf.fixed) return "n/a";
+        if (!c.pf.iops) return "not published";
+        const extra = c.pf.units > 1 ? mark(`${c.o.name}: ${state.tib} TiB is larger than one ${c.o.unitLabel} can be (${c.o.unitMaxTiB} TiB), so this datastore needs ${c.pf.units} ${c.o.unitLabel}s.`) : "";
+        return num(c.pf.iops) + (c.pf.wIops ? ` read · ${num(c.pf.wIops)} write` : "") + extra;
+      }, { strong: true });
+      row(`Expected throughput at ${state.tib} TiB`, c => {
+        if (c.none || por(c) || !c.pf) return c.none ? na : "not published";
+        if (!c.pf.mbps) return "not published";
+        return `${mb(c.pf.mbps)} ${c.pf.unit}` + (c.pf.wMbps ? ` read · ${mb(c.pf.wMbps)} write` : "");
+      }, { strong: true });
+    }
 
     sec(`MONTHLY PRICE  ·  LIST  ·  ${state.hours} HOURS`);
     row("Rate", c => {
@@ -293,7 +296,7 @@
   let lastReport = null;
 
   function update() {
-    $("#cap").value = state.tib; $("#hours").value = state.hours;
+    $("#cap").value = state.tib; $("#hours").value = state.hours; $("#showPerf").checked = state.showPerf;
     $("#units").textContent = (state.tib * U).toLocaleString("en-US");
     renderPickers(); renderTable();
   }
@@ -311,6 +314,7 @@
   document.addEventListener("change", e => {
     const el = e.target;
     if (el.id === "cap") { state.tib = Math.max(1, Math.min(1000, Math.round(+el.value) || 1)); return update(); }
+    if (el.id === "showPerf") { state.showPerf = el.checked; return update(); }
     if (el.id === "hours") { state.hours = Math.max(1, Math.min(744, +el.value || 730)); return update(); }
     const card = el.closest("[data-pid]");
     if (!card) return;
