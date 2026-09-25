@@ -22,7 +22,13 @@
     const n = rep.heads.length;
     const firstW = 3.0, colW = (W - 2 * M - firstW) / n;
     const b = { type: "solid", pt: 0.75, color: C.line }, border = [b, b, b, b];
-    const top = 1.6, maxH = rep.callouts.length ? 5.9 : 6.7;
+    // ---- estimate disclaimer banner ----
+    s.addShape(pptx.ShapeType.roundRect, { x: M, y: 1.52, w: W - 2 * M, h: 0.42, rectRadius: 0.06, fill: { color: "FFF4E0" }, line: { color: C.gold, width: 1.25 } });
+    s.addText([
+      { text: "⚠  ESTIMATE ONLY — NOT A QUOTE.  ", options: { bold: true, color: C.red } },
+      { text: "Indicative pricing based on public list prices; it is not a guaranteed quote or offer. Confirm final pricing with each provider.", options: { color: C.ink } }
+    ], { x: M + 0.15, y: 1.52, w: W - 2 * M - 0.3, h: 0.42, fontFace: BODY, fontSize: 13, valign: "middle", margin: 0, isTextBox: true });
+    const top = 2.08, maxH = rep.callouts.length ? 5.45 : 6.25;
     const nSec = rep.rows.filter(r => r.section).length, nData = rep.rows.length - nSec + 1;
     const secH = 0.2;
     const rowH = Math.min(0.32, (maxH - nSec * secH) / nData);
