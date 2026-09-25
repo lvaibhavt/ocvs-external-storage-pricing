@@ -10,7 +10,7 @@
   // A datastore is one volume (or one file system / instance), grown in whole TiB.
   // Only when the capacity is bigger than one volume can be does it use more.
   const RG = window.STORAGE_REGIONS;
-  const DEFAULTS = { kind: "block", tib: 20, hours: D.defaultHours, showPerf: false };   // performance hidden by default
+  const DEFAULTS = { kind: "block", tib: 20, hours: D.defaultHours, showPerf: false, showTiers: false };   // performance-level pickers hidden; defaults used   // performance hidden by default
   // Discounts: off by default; one % per platform, applied to that platform's list price.
   const fresh0 = () => ({ discOn: false, disc: { ocvs: 0, gcve: 0, avs: 0, evs: 0 } });
   const discPct = pid => (state.discOn ? Math.max(0, Math.min(99, +state.disc[pid] || 0)) : 0);
@@ -40,7 +40,7 @@
     if (!o || !o.tiers) return null;
     const avail = availIn(o.platform, o) || {};
     const list = o.tiers.filter(t => !(t.id in avail) || avail[t.id] != null);
-    const t = list.find(t => t.id === state.tier[o.id]) || list.find(t => t.default) || list[0];
+    const t = (state.showTiers && list.find(t => t.id === state.tier[o.id])) || list.find(t => t.default) || list[0];
     if (!t) return null;
     const p = avail[t.id];
     if (p == null) return t;
@@ -142,7 +142,7 @@
           ${regionSel}
           <label>Service
             <select data-k="opt">${list.map(x => `<option value="${x.id}" ${x === o ? "selected" : ""}>${esc(x.name)}${x.partner ? " (partner)" : ""}</option>`).join("")}</select></label>
-          ${o.tiers ? `<label>Performance level
+          ${!state.showTiers ? "" : o.tiers ? `<label>Performance level
             <select data-k="tier">${tiersIn(o).map(x => `<option value="${x.id}" ${t && x.id === t.id ? "selected" : ""}>${esc(x.label)}</option>`).join("")}</select>
             ${t && t.desc ? `<span class="tier-desc">${esc(t.desc)}</span>` : ""}</label>`
             : `<div class="chip warn">No published tiers</div>`}
@@ -307,7 +307,7 @@
   let lastReport = null;
 
   function update() {
-    $("#cap").value = state.tib; $("#hours").value = state.hours; $("#showPerf").checked = state.showPerf;
+    $("#cap").value = state.tib; $("#hours").value = state.hours; $("#showPerf").checked = state.showPerf; $("#showTiers").checked = state.showTiers;
     $("#discOn").checked = state.discOn;
     $("#discBox").hidden = !state.discOn;
     document.querySelectorAll("[data-disc]").forEach(i => { i.value = state.disc[i.dataset.disc]; });
@@ -328,6 +328,7 @@
   document.addEventListener("change", e => {
     const el = e.target;
     if (el.id === "cap") { state.tib = Math.max(1, Math.min(1000, Math.round(+el.value) || 1)); return update(); }
+    if (el.id === "showTiers") { state.showTiers = el.checked; return update(); }
     if (el.id === "showPerf") { state.showPerf = el.checked; return update(); }
     if (el.id === "discOn") { state.discOn = el.checked; return update(); }
     if (el.dataset.disc) { state.disc[el.dataset.disc] = Math.max(0, Math.min(99, +el.value || 0)); el.value = state.disc[el.dataset.disc]; return update(); }
