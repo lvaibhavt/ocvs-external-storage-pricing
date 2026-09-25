@@ -10,7 +10,7 @@
   // A datastore is one volume (or one file system / instance), grown in whole TiB.
   // Only when the capacity is bigger than one volume can be does it use more.
   const RG = window.STORAGE_REGIONS;
-  const DEFAULTS = { kind: "block", tib: 20, hours: D.defaultHours, showPerf: false, showTiers: false };   // performance-level pickers hidden; defaults used   // performance hidden by default
+  const DEFAULTS = { kind: "block", tib: 20, hours: D.defaultHours, showPerf: false, showTiers: false, showInfo: false };   // performance-level pickers hidden; defaults used   // performance hidden by default
   // Discounts: off by default; one % per platform, applied to that platform's list price.
   const fresh0 = () => ({ discOn: false, disc: { ocvs: 0, gcve: 0, avs: 0, evs: 0 } });
   const discPct = pid => (state.discOn ? Math.max(0, Math.min(99, +state.disc[pid] || 0)) : 0);
@@ -198,8 +198,8 @@
     row("Region", c => c.region.name);
     row("Service", c => c.none ? "Not available in this region" : c.o.name + (usesNfsFallback(c.pid) ? mark(D.gaps.block.gcve) : ""));
     row("Performance level", c => c.none ? na : (c.t ? c.t.label : "n/a"));
-    row("What this level means", c => c.none ? na : (c.t && c.t.desc ? c.t.desc : (c.o.priceOnRequest ? "Partner product — sizing and performance set with the vendor" : "—")), { desc: true });
-    row("Ownership", c => c.none ? na : c.o.ownership);
+    if (state.showInfo) row("What this level means", c => c.none ? na : (c.t && c.t.desc ? c.t.desc : (c.o.priceOnRequest ? "Partner product — sizing and performance set with the vendor" : "—")), { desc: true });
+    if (state.showInfo) row("Ownership", c => c.none ? na : c.o.ownership);
     row(`What you buy for ${state.tib} TiB`, c => {
       if (c.none) return na;
       if (c.o.priceOnRequest) return "Sized with the vendor";
@@ -215,7 +215,7 @@
     row("Protocol", c => c.none ? na : c.o.protocol);
     row("Datastore type", c => c.none ? na : c.o.datastore + (usesNfsFallback(c.pid) ? " (no block option)" : ""));
     row("Media", c => c.none ? na : c.o.media);
-    row("Size limits", c => c.none ? na : `${c.o.minSize} to ${c.o.maxSize}`);
+    if (state.showInfo) row("Size limits", c => c.none ? na : `${c.o.minSize} to ${c.o.maxSize}`);
 
     if (state.showPerf) {
       sec("PERFORMANCE");
@@ -308,7 +308,7 @@
   let lastReport = null;
 
   function update() {
-    $("#cap").value = state.tib; $("#hours").value = state.hours; $("#showPerf").checked = state.showPerf; $("#showTiers").checked = state.showTiers;
+    $("#cap").value = state.tib; $("#hours").value = state.hours; $("#showPerf").checked = state.showPerf; $("#showTiers").checked = state.showTiers; $("#showInfo").checked = state.showInfo;
     $("#discOn").checked = state.discOn;
     $("#discBox").hidden = !state.discOn;
     document.querySelectorAll("[data-disc]").forEach(i => { i.value = state.disc[i.dataset.disc]; });
@@ -329,6 +329,7 @@
   document.addEventListener("change", e => {
     const el = e.target;
     if (el.id === "cap") { state.tib = Math.max(1, Math.min(1000, Math.round(+el.value) || 1)); return update(); }
+    if (el.id === "showInfo") { state.showInfo = el.checked; return update(); }
     if (el.id === "showTiers") { state.showTiers = el.checked; return update(); }
     if (el.id === "showPerf") { state.showPerf = el.checked; return update(); }
     if (el.id === "discOn") { state.discOn = el.checked; return update(); }

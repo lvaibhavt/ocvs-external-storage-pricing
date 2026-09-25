@@ -142,7 +142,7 @@ tr.desc td.base { font-weight: 600; color: var(--navy); }
 .settings .unit-input input { border: 0; outline: 0; width: 80px; padding: 8px 10px; font: 600 15px system-ui, sans-serif; background: transparent; }
 .unit-input > span { display: flex; align-items: center; padding: 0 10px; background: var(--sec); color: var(--muted); font-size: 12px; font-weight: 600; border-left: 1px solid var(--line); }
 .field .hint b { color: var(--ink); }
-.switches { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.switches { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .sw { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px; cursor: pointer; transition: border-color .15s, background .15s; }
 .sw:hover { border-color: #aab2c8; }
 .sw input { position: absolute; opacity: 0; pointer-events: none; }
