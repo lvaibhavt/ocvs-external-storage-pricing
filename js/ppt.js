@@ -71,7 +71,7 @@
     // ---- footnotes ----
     const fy = rep.callouts.length ? cy + 0.92 : cy + 0.1;
     const foot = rep.notes.map((t, i) => `${sup(i + 1)} ${t}`).concat([
-      `Indicative public list prices as of ${rep.asOf}; not a quote. 1 TiB = 1,024 GB/GiB. Storage only: excludes VMware nodes, networking, egress, backup, support and taxes.`
+      `${rep.discNote || "Indicative public list prices"} as of ${rep.asOf}; not a quote. 1 TiB = 1,024 GB/GiB. Storage only: excludes VMware nodes, networking, egress, backup, support and taxes.`
     ]).join("   ");
     s.addText(foot, { x: M, y: fy, w: W - 2 * M, h: Math.max(0.3, H - fy - 0.12), fontFace: BODY, fontSize: 8, color: "666666", valign: "top", margin: 0, isTextBox: true, fit: "shrink" });
   }
@@ -81,7 +81,7 @@
     s.background = { color: C.white };
     s.addText("Assumptions & sources", { x: M, y: 0.45, w: 11, h: 0.8, fontFace: HEAD, fontSize: 32, bold: true, color: C.navy, margin: 0, isTextBox: true });
     const items = [
-      ["Basis", `${rep.tib} TiB datastore, one volume (or file system) of that size. Monthly list prices. 1 TiB = 1,024 GB/GiB as in each provider's calculator. Prices as of ${rep.asOf}.`],
+      ["Basis", `${rep.tib} TiB datastore, one volume (or file system) of that size. ${rep.discNote ? rep.discNote + "." : "Monthly list prices."} 1 TiB = 1,024 GB/GiB as in each provider's calculator. Prices as of ${rep.asOf}.`],
       ...rep.sources.map(x => [x.platform, `${x.service} · ${x.region}. Sources: ${x.links.join(" · ")}`]),
       ["GCVE", "Google Cloud VMware Engine supports no block (iSCSI/VMFS) datastore, so it is compared on storage-only nodes (vSAN) or NFS (Filestore / NetApp Volumes)."],
       ["Scope", "Storage only. Excludes VMware nodes, networking, egress, backup, support and taxes. Estimates, not quotes."]

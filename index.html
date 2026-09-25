@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OCVS External Storage Pricing</title>
 <meta name="description" content="Compare external block (iSCSI) datastore options for OCVS, AVS and Amazon EVS, with GCVE's NFS options alongside: media, protocol, IOPS, throughput and list price.">
-<link rel="stylesheet" href="css/style.css?v=14">
+<link rel="stylesheet" href="css/style.css?v=15">
 </head>
 <body>
 <header class="top">
@@ -27,6 +27,16 @@
     <label class="toggle-perf">Performance figures
       <span class="switch-row"><input id="showPerf" type="checkbox"> <span>Show IOPS and throughput</span></span>
     </label>
+    <label class="toggle-perf">Discounts
+      <span class="switch-row"><input id="discOn" type="checkbox"> <span>Apply discounts</span></span>
+    </label>
+    <div id="discBox" class="disc-box" hidden>
+      <span class="disc-title">Discount off list price (%)</span>
+      <label>OCVS <input type="number" data-disc="ocvs" min="0" max="99" step="1" value="0"></label>
+      <label>GCVE <input type="number" data-disc="gcve" min="0" max="99" step="1" value="0"></label>
+      <label>AVS <input type="number" data-disc="avs" min="0" max="99" step="1" value="0"></label>
+      <label>Amazon EVS <input type="number" data-disc="evs" min="0" max="99" step="1" value="0"></label>
+    </div>
     <p class="units">1 TiB = 1,024 units · you are pricing <b id="units">102,400</b> GB/GiB</p>
     <button id="reset" class="ghost" type="button">Reset to defaults</button>
   </section>
@@ -64,7 +74,7 @@
       <a href="https://blogs.oracle.com/cloud-infrastructure/how-oci-set-new-storage-performance-standards" target="_blank" rel="noopener">How OCI set new storage performance standards</a></p>
     <h2>Before quoting these figures</h2>
     <ul>
-      <li><b>Indicative only.</b> Public list prices without discounts. Confirm on the provider's own calculator before sharing with a customer.</li>
+      <li><b>Indicative only.</b> Public list prices. Tick <b>Apply discounts</b> to enter a negotiated discount per provider; it is taken off that provider's list price, and the savings, callouts and PPT use the discounted prices. Confirm on the provider's own calculator before sharing with a customer.</li>
       <li><b>FSx for ONTAP (EVS)</b> includes its throughput-capacity charge (default 128 MBps). The AWS calculator pre-fills <b>65% compression and deduplication savings</b> and bills only the remaining 35% of capacity; the tool defaults to <b>0%</b> so every service is compared on the capacity you provision. Enter 65% and the throughput AWS uses to reproduce its figure — e.g. 900 TiB, 65%, 256 MBps, Single-AZ, Frankfurt = $48,061.44 + $210.43 = <b>$48,271.87</b>.</li>
       <li><b>Not in the price:</b> Filestore custom performance and OCI High Performance Mount Targets are charged separately.</li>
       <li><b>Storage only:</b> no VMware nodes, networking, egress, backup, support or taxes.</li>
@@ -73,9 +83,9 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
-<script src="data/storage.js?v=14"></script>
-<script src="data/regions.js?v=14"></script>
-<script src="js/ppt.js?v=14"></script>
-<script src="js/app.js?v=14"></script>
+<script src="data/storage.js?v=15"></script>
+<script src="data/regions.js?v=15"></script>
+<script src="js/ppt.js?v=15"></script>
+<script src="js/app.js?v=15"></script>
 </body>
 </html>

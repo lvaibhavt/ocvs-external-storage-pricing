@@ -117,3 +117,8 @@ tr.desc td.base { font-weight: 600; color: var(--navy); }
 .so-box { background: #eef4ff; border: 1px solid #c9dafc; border-radius: 6px; padding: 8px 10px; font-size: 12px; color: var(--ink); line-height: 1.5; }
 .toggle-perf .switch-row { display: flex; align-items: center; gap: 8px; font-weight: 400; color: var(--ink); font-size: 14px; padding: 8px 0; }
 .toggle-perf input { width: 18px; height: 18px; accent-color: #1f2a5c; cursor: pointer; }
+.disc-box { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 18px; background: #f7f8fc; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.disc-box[hidden] { display: none; }
+.disc-box .disc-title { width: 100%; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
+.disc-box label { font-size: 13px; }
+.disc-box input { width: 90px; }

@@ -11,11 +11,15 @@
   // Only when the capacity is bigger than one volume can be does it use more.
   const RG = window.STORAGE_REGIONS;
   const DEFAULTS = { kind: "block", tib: 20, hours: D.defaultHours, showPerf: false };   // performance hidden by default
+  // Discounts: off by default; one % per platform, applied to that platform's list price.
+  const fresh0 = () => ({ discOn: false, disc: { ocvs: 0, gcve: 0, avs: 0, evs: 0 } });
+  const discPct = pid => (state.discOn ? Math.max(0, Math.min(99, +state.disc[pid] || 0)) : 0);
+  const net = (pid, list) => (list == null ? null : list * (1 - discPct(pid) / 100));
   // GCVE defaults to Filestore, its cheaper NFS option, so the comparison stays conservative.
   // FSx: dedupe/compression 0% (like-for-like with the other services, which bill provisioned
   // capacity) and 128 MBps throughput capacity, the smallest file system AWS offers.
   const fresh = () => ({ ...DEFAULTS, sel: { gcve: "filestore" }, tier: {}, term: {}, prot: {}, region: { ...RG.defaults },
-                         fsxDR: 0, fsxMbps: 128 });
+                         fsxDR: 0, fsxMbps: 128, ...fresh0() });
   let state = fresh();
 
   const regionsOf = pid => RG.platforms[pid];
@@ -128,7 +132,7 @@
           <div class="pv-body">${regionSel}<div class="nosupport"><b>No external storage in this region</b>
             <span>${esc(`${missing} is not available as a datastore in ${reg.name}.`)}</span></div></div></div>`;
       }
-      const o = chosen(pid), t = tierOf(o), pf = perf(o, t, state.tib), cost = monthly(o, t);
+      const o = chosen(pid), t = tierOf(o), pf = perf(o, t, state.tib), cost = net(pid, monthly(o, t));
       return `<div class="card pv${p.baseline ? " base" : ""}${o.partner ? " partner" : ""}" data-pid="${pid}">
         <div class="pv-head"><span class="dot" style="background:${p.accent}"></span>
           <div><div class="pv-name">${esc(p.name)}${p.baseline ? '<span class="tag">BASELINE</span>' : ""}</div>
@@ -174,7 +178,8 @@
       const o = chosen(pid);
       if (!o) return { pid, none: true, platform: D.platforms[pid], region: regionOf(pid) };
       const t = tierOf(o);
-      return { pid, platform: D.platforms[pid], region: regionOf(pid), o, t, cost: monthly(o, t), pf: perf(o, t, state.tib) };
+      const list = monthly(o, t);
+      return { pid, platform: D.platforms[pid], region: regionOf(pid), o, t, list, cost: net(pid, list), pf: perf(o, t, state.tib) };
     });
     const base = cols[0];
     const notes = [];
@@ -240,7 +245,13 @@
         (c.t.priceHr != null ? mark(`${c.o.name} is billed per ${c.o.unit}-hour ($${c.t.priceHr.toFixed(6)}), so the monthly rate is × ${state.hours} hours.`) : "");
     });
     row("Per TiB", c => c.none ? na : (por(c) ? "on request" : usd(c.cost / state.tib)) + (c.o && c.o.nodeBased ? " (of usable TiB requested)" : ""));
-    row(`${state.tib} TiB per month`, c => c.none ? na : (por(c) ? "on request" : usd(c.cost, 0)), { strong: true });
+    if (state.discOn) {
+      row(`${state.tib} TiB per month, list price`, c => c.none ? na : (por(c) ? "on request" : usd(c.list, 0)));
+      row("Discount", c => c.none || por(c) ? na : `${discPct(c.pid)}%` + (discPct(c.pid) ? ` (−${usd(c.list - c.cost, 0)})` : ""));
+      row(`${state.tib} TiB per month, after discount`, c => c.none ? na : (por(c) ? "on request" : usd(c.cost, 0)), { strong: true });
+    } else {
+      row(`${state.tib} TiB per month`, c => c.none ? na : (por(c) ? "on request" : usd(c.cost, 0)), { strong: true });
+    }
 
     const callouts = [];
     if (base && !base.none && base.cost) {
@@ -279,14 +290,14 @@
     $("#svc-notes").innerHTML = cols.filter(c => !c.none).map(c =>
       `<details><summary>${esc(c.platform.name)} — ${esc(c.o.name)}</summary><ul>${c.o.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul>
         <p class="links">${c.o.links.map(([l, href]) => `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(l)}</a>`).join(" · ")}</p></details>`).join("");
-    $("#head-sub").textContent = `${state.tib} TiB datastore · block (iSCSI), GCVE compared on NFS · list prices as of ${D.asOf}`;
+    $("#head-sub").textContent = `${state.tib} TiB datastore · block (iSCSI), GCVE compared on NFS · ${state.discOn ? "prices after discount" : "list prices"} as of ${D.asOf}`;
 
     // Everything the slide needs, so the PPT always matches the page.
-    lastReport = {
+    lastReport = { discNote: state.discOn ? `Public list prices less discounts (OCVS ${discPct("ocvs")}%, GCVE ${discPct("gcve")}%, AVS ${discPct("avs")}%, EVS ${discPct("evs")}%)` : "",
       heads: cols.map(c => c.platform.name),
       rows: rows.filter(r => !r.desc),
       callouts, notes,
-      subtitle: [`${state.tib} TiB datastore`, "Block (iSCSI) · GCVE on its non-block alternative", "Monthly list prices", `${state.hours} hours/month for hourly-billed services`].join("  ·  "),
+      subtitle: [`${state.tib} TiB datastore`, "Block (iSCSI) · GCVE on its non-block alternative", state.discOn ? `Monthly prices after discount (OCVS ${discPct("ocvs")}%, GCVE ${discPct("gcve")}%, AVS ${discPct("avs")}%, EVS ${discPct("evs")}%)` : "Monthly list prices", `${state.hours} hours/month for hourly-billed services`].join("  ·  "),
       sources: cols.filter(c => !c.none).map(c => ({
         platform: c.platform.longName, region: c.region.name, service: c.o.name + (c.t ? ` — ${c.t.label}` : ""),
         links: c.o.links.map(l => l[1]) })),
@@ -297,6 +308,9 @@
 
   function update() {
     $("#cap").value = state.tib; $("#hours").value = state.hours; $("#showPerf").checked = state.showPerf;
+    $("#discOn").checked = state.discOn;
+    $("#discBox").hidden = !state.discOn;
+    document.querySelectorAll("[data-disc]").forEach(i => { i.value = state.disc[i.dataset.disc]; });
     $("#units").textContent = (state.tib * U).toLocaleString("en-US");
     renderPickers(); renderTable();
   }
@@ -315,6 +329,8 @@
     const el = e.target;
     if (el.id === "cap") { state.tib = Math.max(1, Math.min(1000, Math.round(+el.value) || 1)); return update(); }
     if (el.id === "showPerf") { state.showPerf = el.checked; return update(); }
+    if (el.id === "discOn") { state.discOn = el.checked; return update(); }
+    if (el.dataset.disc) { state.disc[el.dataset.disc] = Math.max(0, Math.min(99, +el.value || 0)); el.value = state.disc[el.dataset.disc]; return update(); }
     if (el.id === "hours") { state.hours = Math.max(1, Math.min(744, +el.value || 730)); return update(); }
     const card = el.closest("[data-pid]");
     if (!card) return;
