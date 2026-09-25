@@ -135,10 +135,9 @@
       const o = chosen(pid), t = tierOf(o), pf = perf(o, t, state.tib), cost = net(pid, monthly(o, t));
       return `<div class="card pv${p.baseline ? " base" : ""}${o.partner ? " partner" : ""}" data-pid="${pid}">
         <div class="pv-head"><span class="dot" style="background:${p.accent}"></span>
-          <div><div class="pv-name">${esc(p.name)}${p.baseline ? '<span class="tag">BASELINE</span>' : ""}</div>
+          <div><div class="pv-name">${esc(p.name)}${usesNfsFallback(pid) ? `<span class="info" tabindex="0" role="button" aria-label="Why GCVE is different">i<span class="info-pop" role="tooltip"><b>No block option on GCVE.</b> Google supports no iSCSI/VMFS datastore for VMware Engine, so its alternatives are compared instead: storage-only nodes (extra vSAN) or NFS from Filestore / NetApp Volumes.</span></span>` : ""}${p.baseline ? '<span class="tag">BASELINE</span>' : ""}</div>
             <div class="pv-sub">${esc(p.longName)}</div></div></div>
         <div class="pv-body">
-          ${usesNfsFallback(pid) ? `<div class="fallback"><b>No block option on GCVE.</b> Google supports no iSCSI/VMFS datastore for VMware Engine, so its alternatives are compared instead: storage-only nodes (extra vSAN) or NFS from Filestore / NetApp Volumes.</div>` : ""}
           ${regionSel}
           <label>Service
             <select data-k="opt">${list.map(x => `<option value="${x.id}" ${x === o ? "selected" : ""}>${esc(x.name)}${x.partner ? " (partner)" : ""}</option>`).join("")}</select></label>

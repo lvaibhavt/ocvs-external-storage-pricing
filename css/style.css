@@ -122,3 +122,6 @@ tr.desc td.base { font-weight: 600; color: var(--navy); }
 .disc-box .disc-title { width: 100%; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; }
 .disc-box label { font-size: 13px; }
 .disc-box input { width: 90px; }
+.info { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; margin-left: 6px; border-radius: 50%; background: #1F2A5C; color: #fff; font: italic 700 11px Georgia, serif; cursor: help; vertical-align: 2px; }
+.info-pop { display: none; position: absolute; top: 24px; left: -10px; z-index: 20; width: 270px; padding: 10px 12px; background: #fff; color: #333; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 18px rgba(0,0,0,.15); font: 400 13px/1.45 system-ui, sans-serif; text-align: left; }
+.info:hover .info-pop, .info:focus .info-pop, .info:focus-within .info-pop { display: block; }
